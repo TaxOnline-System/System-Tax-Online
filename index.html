@@ -67,8 +67,10 @@
           <input type="number" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="expense" /></div>
         <div><label class="block text-sm font-medium text-gray-800 dark:text-gray-200">ค่าลดหย่อน (บาท)</label>
           <input type="number" value="60000" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="deduction" /></div>
-     <div class="mb-4">
-  <label for="receiptUpload" class="block text-sm font-medium text-gray-800 dark:text-gray-200">อัปโหลดใบเสร็จ (ไม่บังคับ)</label>
+    <div class="mb-4">
+  <label for="receiptUpload" class="block text-sm font-medium text-gray-800 dark:text-gray-200">
+    อัปโหลดใบเสร็จ (ไม่บังคับ)
+  </label>
   <input type="file" id="receiptUpload" name="receiptUpload"
          accept="image/*,.pdf"
          capture="environment"
@@ -82,7 +84,12 @@
   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
     รองรับการถ่ายภาพด้วยกล้อง หรือเลือกไฟล์ JPG, PNG, PDF ได้ (อัปโหลดได้หลายไฟล์)
   </p>
+
+  <!-- ✅ เพิ่มส่วนแสดงผลพรีวิวและจำนวนไฟล์ -->
+  <div id="fileInfo" class="mt-2 text-sm text-gray-700 dark:text-gray-300"></div>
+  <div id="previewArea" class="mt-2 grid grid-cols-3 gap-2"></div>
 </div>
+
         <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition">คำนวณภาษี</button>
       </form>
       <div class="mt-6"><canvas id="taxPieChart"></canvas></div>
