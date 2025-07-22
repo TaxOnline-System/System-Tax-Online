@@ -22,9 +22,46 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
+    
+    /* 🌀 Splash Screen Style */
+    #splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 1s ease-in;
+    }
+
+    .splash-spinner {
+      width: 60px;
+      height: 60px;
+      border: 8px solid transparent;
+      border-top-color: #ec4899;
+      border-radius: 50%;
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="font-sans">
+  <!-- 🔄 Splash Screen -->
+  <div id="splash">
+    <div class="splash-spinner"></div>
+    <h2 class="text-xl font-semibold text-pink-600">กำลังโหลดระบบ...</h2>
+  </div>
+
   <div class="fixed top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
     <span id="datetime">--:--</span>
   </div>
@@ -116,79 +153,13 @@
     setInterval(updateDateTime, 1000);
     updateDateTime();
 
-    document.getElementById('receiptUpload').addEventListener('change', function () {
-      const files = this.files;
-      const fileInfo = document.getElementById('fileInfo');
-      const previewArea = document.getElementById('previewArea');
-
-      fileInfo.innerText = `คุณเลือก ${files.length} ไฟล์`;
-      previewArea.innerHTML = '';
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
-
-        if (file.type.startsWith('image/')) {
-          reader.onload = function (e) {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = file.name;
-            img.className = 'w-full h-24 object-cover rounded shadow';
-            previewArea.appendChild(img);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          const fileLabel = document.createElement('p');
-          fileLabel.textContent = `📄 ${file.name}`;
-          fileLabel.className = 'text-xs text-gray-700 dark:text-gray-300';
-          previewArea.appendChild(fileLabel);
-        }
-      }
-    });
-
-    function calculateTax(income, expense, deduction) {
-      let netIncome = income - expense - deduction;
-      return netIncome <= 150000 ? 0 : netIncome * 0.05;
-    }
-
-    document.getElementById("taxForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const income = parseFloat(document.getElementById("income").value);
-      const expense = parseFloat(document.getElementById("expense").value);
-      const deduction = parseFloat(document.getElementById("deduction").value);
-
-      if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข");
-        return;
-      }
-
-      const tax = calculateTax(income, expense, deduction);
-      const ctx = document.getElementById('taxPieChart').getContext('2d');
-      if (window.taxChart instanceof Chart) window.taxChart.destroy();
-
-      const taxPercentage = (income - expense - deduction > 150000) ? 100 : 0;
-      window.taxChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
-          datasets: [{
-            data: [taxPercentage, 100 - taxPercentage],
-            backgroundColor: ['#ef4444', '#22c55e'],
-            hoverOffset: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: 'top' },
-            title: {
-              display: true,
-              text: `ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท`,
-              font: { size: 16 }
-            }
-          }
-        }
-      });
+    // ซ่อน Splash Screen หลังจากโหลดเสร็จ
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        const splash = document.getElementById("splash");
+        splash.style.opacity = "0";
+        setTimeout(() => splash.style.display = "none", 1000); // ทำให้ Splash หายไป
+      }, 1500); // Splash จะค้างไว้ 1.5 วินาที
     });
   </script>
 </body>
