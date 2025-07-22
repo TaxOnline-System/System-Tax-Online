@@ -67,17 +67,22 @@
           <input type="number" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="expense" /></div>
         <div><label class="block text-sm font-medium text-gray-800 dark:text-gray-200">ค่าลดหย่อน (บาท)</label>
           <input type="number" value="60000" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="deduction" /></div>
-        <div class="mb-4">
-          <label for="receiptUpload" class="block text-sm font-medium text-gray-800 dark:text-gray-200">อัปโหลดใบเสร็จ (ไม่บังคับ)</label>
-          <input type="file" id="receiptUpload" name="receiptUpload" accept=".jpg, .jpeg, .png, .pdf" multiple
-                 class="mt-1 block w-full text-sm text-gray-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-blue-50 file:text-blue-700
-                        hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-white dark:hover:file:bg-gray-600">
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">รองรับไฟล์ JPG, PNG, PDF (อัปโหลดได้หลายไฟล์)</p>
-        </div>
+     <div class="mb-4">
+  <label for="receiptUpload" class="block text-sm font-medium text-gray-800 dark:text-gray-200">อัปโหลดใบเสร็จ (ไม่บังคับ)</label>
+  <input type="file" id="receiptUpload" name="receiptUpload"
+         accept="image/*,.pdf"
+         capture="environment"
+         multiple
+         class="mt-1 block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-white dark:hover:file:bg-gray-600">
+  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+    รองรับการถ่ายภาพด้วยกล้อง หรือเลือกไฟล์ JPG, PNG, PDF ได้ (อัปโหลดได้หลายไฟล์)
+  </p>
+</div>
         <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition">คำนวณภาษี</button>
       </form>
       <div class="mt-6"><canvas id="taxPieChart"></canvas></div>
