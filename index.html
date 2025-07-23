@@ -22,7 +22,7 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-    
+
     /* 🌀 Splash Screen Style */
     #splash {
       position: fixed;
@@ -70,110 +70,127 @@
       🌙 Toggle Dark Mode
     </button>
   </div>
-<script>
-  // การตั้งค่า Dark Mode และบันทึกสถานะใน LocalStorage
-  function toggleDarkMode() {
-    // สลับโหมดแสงและมืด
-    document.documentElement.classList.toggle("dark");
-    
-    // เก็บสถานะ Dark Mode ลง localStorage
-    const theme = document.documentElement.classList.contains("dark") ? "dark" : "light";
-    localStorage.setItem("theme", theme);
-  }
 
-  // โหลด theme จาก localStorage เมื่อหน้าเว็บโหลด
-  (function () {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      document.documentElement.classList.add(savedTheme);
+  <script>
+    // การตั้งค่า Dark Mode และบันทึกสถานะใน LocalStorage
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle("dark");
+      localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
     }
-  })();
 
-  function updateDateTime() {
-    const now = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const timeStr = now.toLocaleTimeString('th-TH');
-    const dateStr = now.toLocaleDateString('th-TH', options);
-    document.getElementById('datetime').innerText = `${dateStr} ${timeStr}`;
-  }
-  setInterval(updateDateTime, 1000);
-  updateDateTime();
-
-  document.getElementById('receiptUpload').addEventListener('change', function () {
-    const files = this.files;
-    const fileInfo = document.getElementById('fileInfo');
-    const previewArea = document.getElementById('previewArea');
-
-    fileInfo.innerText = `คุณเลือก ${files.length} ไฟล์`;
-    previewArea.innerHTML = '';
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const reader = new FileReader();
-
-      if (file.type.startsWith('image/')) {
-        reader.onload = function (e) {
-          const img = document.createElement('img');
-          img.src = e.target.result;
-          img.alt = file.name;
-          img.className = 'w-full h-24 object-cover rounded shadow';
-          previewArea.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        const fileLabel = document.createElement('p');
-        fileLabel.textContent = `📄 ${file.name}`;
-        fileLabel.className = 'text-xs text-gray-700 dark:text-gray-300';
-        previewArea.appendChild(fileLabel);
+    (function () {
+      if (localStorage.getItem("theme") === "dark") {
+        document.documentElement.classList.add("dark");
       }
+    })();
+
+    function updateDateTime() {
+      const now = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const timeStr = now.toLocaleTimeString('th-TH');
+      const dateStr = now.toLocaleDateString('th-TH', options);
+      document.getElementById('datetime').innerText = `${dateStr} ${timeStr}`;
     }
-  });
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
 
-  function calculateTax(income, expense, deduction) {
-    let netIncome = income - expense - deduction;
-    return netIncome <= 150000 ? 0 : netIncome * 0.05;
-  }
+    // เช็คสถานะการเข้าสู่ระบบ
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "login.html"; // หากผู้ใช้ไม่ได้เข้าสู่ระบบจะถูกนำไปยังหน้าเข้าสู่ระบบ
+      }
+    });
 
-  document.getElementById("taxForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    const income = parseFloat(document.getElementById("income").value);
-    const expense = parseFloat(document.getElementById("expense").value);
-    const deduction = parseFloat(document.getElementById("deduction").value);
+    document.getElementById('receiptUpload').addEventListener('change', function () {
+      const files = this.files;
+      const fileInfo = document.getElementById('fileInfo');
+      const previewArea = document.getElementById('previewArea');
 
-    if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
-      alert("กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข");
-      return;
-    }
+      fileInfo.innerText = `คุณเลือก ${files.length} ไฟล์`;
+      previewArea.innerHTML = '';
 
-    const tax = calculateTax(income, expense, deduction);
-    const ctx = document.getElementById('taxPieChart').getContext('2d');
-    if (window.taxChart instanceof Chart) window.taxChart.destroy();
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
 
-    const taxPercentage = (income - expense - deduction > 150000) ? 100 : 0;
-    window.taxChart = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
-        datasets: [{
-          data: [taxPercentage, 100 - taxPercentage],
-          backgroundColor: ['#ef4444', '#22c55e'],
-          hoverOffset: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'top' },
-          title: {
-            display: true,
-            text: `ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท`,
-            font: { size: 16 }
-          }
+        if (file.type.startsWith('image/')) {
+          reader.onload = function (e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.alt = file.name;
+            img.className = 'w-full h-24 object-cover rounded shadow';
+            previewArea.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const fileLabel = document.createElement('p');
+          fileLabel.textContent = `📄 ${file.name}`;
+          fileLabel.className = 'text-xs text-gray-700 dark:text-gray-300';
+          previewArea.appendChild(fileLabel);
         }
       }
     });
-  });
-</script>
+
+    function calculateTax(income, expense, deduction) {
+      let netIncome = income - expense - deduction;
+      return netIncome <= 150000 ? 0 : netIncome * 0.05;
+    }
+
+    document.getElementById("taxForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const income = parseFloat(document.getElementById("income").value);
+      const expense = parseFloat(document.getElementById("expense").value);
+      const deduction = parseFloat(document.getElementById("deduction").value);
+
+      if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
+        alert("กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข");
+        return;
+      }
+
+      const tax = calculateTax(income, expense, deduction);
+      const ctx = document.getElementById('taxPieChart').getContext('2d');
+      if (window.taxChart instanceof Chart) window.taxChart.destroy();
+
+      const taxPercentage = (income - expense - deduction > 150000) ? 100 : 0;
+      window.taxChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
+          datasets: [{
+            data: [taxPercentage, 100 - taxPercentage],
+            backgroundColor: ['#ef4444', '#22c55e'],
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: {
+              display: true,
+              text: `ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท`,
+              font: { size: 16 }
+            }
+          }
+        }
+      });
+
+      // บันทึกประวัติการคำนวณภาษีใน Firestore
+      const user = firebase.auth().currentUser;
+      db.collection("taxHistory").add({
+        uid: user.uid,
+        income: income,
+        expense: expense,
+        deduction: deduction,
+        tax: tax,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        console.log("บันทึกประวัติการคำนวณภาษีเรียบร้อยแล้ว");
+      }).catch(err => {
+        console.error("เกิดข้อผิดพลาดในการบันทึกประวัติ: ", err);
+      });
+    });
+  </script>
 
   <header class="bg-white dark:bg-gray-900 shadow p-4 fade-in">
     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
@@ -234,37 +251,5 @@
   <footer class="bg-white dark:bg-gray-900 mt-16 p-4 text-center text-sm text-gray-500 dark:text-gray-400 fade-in">
     &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์
   </footer>
-
-  <script>
-    function toggleDarkMode() {
-      document.documentElement.classList.toggle("dark");
-      localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
-    }
-
-    (function () {
-      if (localStorage.getItem("theme") === "dark") {
-        document.documentElement.classList.add("dark");
-      }
-    })();
-
-    function updateDateTime() {
-      const now = new Date();
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      const timeStr = now.toLocaleTimeString('th-TH');
-      const dateStr = now.toLocaleDateString('th-TH', options);
-      document.getElementById('datetime').innerText = `${dateStr} ${timeStr}`;
-    }
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
-
-    // ซ่อน Splash Screen หลังจากโหลดเสร็จ
-    window.addEventListener("load", () => {
-      setTimeout(() => {
-        const splash = document.getElementById("splash");
-        splash.style.opacity = "0";
-        setTimeout(() => splash.style.display = "none", 1000); // ทำให้ Splash หายไป
-      }, 1500); // Splash จะค้างไว้ 1.5 วินาที
-    });
-  </script>
 </body>
 </html>
