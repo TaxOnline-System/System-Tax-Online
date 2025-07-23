@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>เข้าสู่ระบบ - TaxOnline</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <style>
     body {
       background: linear-gradient(-45deg, #fbc2eb, #a6c1ee, #fad0c4, #a1c4fd);
@@ -23,77 +23,102 @@
 <body class="font-sans">
   <div class="max-w-md mx-auto mt-24 bg-white p-6 rounded-xl shadow-xl">
     <h2 class="text-2xl font-bold text-center text-pink-600 mb-4">เข้าสู่ระบบ / สมัครสมาชิก</h2>
+    
+    <!-- 🔐 ปุ่ม Google Sign-In -->
+    <button id="googleSignInBtn" class="w-full bg-red-500 text-white py-2 rounded mb-4">
+      🔐 เข้าสู่ระบบด้วย Google
+    </button>
+
     <div class="flex justify-center space-x-4 mb-4">
       <button id="loginTab" class="px-4 py-2 bg-blue-600 text-white rounded">เข้าสู่ระบบ</button>
       <button id="signupTab" class="px-4 py-2 bg-green-600 text-white rounded">สมัครสมาชิก</button>
     </div>
+
+    <!-- ฟอร์มเข้าสู่ระบบ -->
     <form id="loginForm" class="space-y-4 hidden">
       <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-2 border rounded" />
       <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-2 border rounded" />
       <button class="w-full bg-blue-600 text-white py-2 rounded" type="submit">เข้าสู่ระบบ</button>
     </form>
+
+    <!-- ฟอร์มสมัครสมาชิก -->
     <form id="signupForm" class="space-y-4 hidden">
       <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-2 border rounded" />
       <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-2 border rounded" />
       <button class="w-full bg-green-600 text-white py-2 rounded" type="submit">สมัครสมาชิก</button>
     </form>
+
     <p id="authMessage" class="text-red-500 text-center mt-4 text-sm"></p>
   </div>
 
+  <script>
+    // ✅ Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
+      authDomain: "tax-online-6afdd.firebaseapp.com",
+      projectId: "tax-online-6afdd",
+      storageBucket: "tax-online-6afdd.appspot.com",
+      messagingSenderId: "959276043439",
+      appId: "1:959276043439:web:f358ce055687efea5d185a"
+    };
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
-    authDomain: "tax-online-6afdd.firebaseapp.com",
-    projectId: "tax-online-6afdd",
-    storageBucket: "tax-online-6afdd.appspot.com",
-    messagingSenderId: "959276043439",
-    appId: "1:959276043439:web:f358ce055687efea5d185a"
-  };
+    // ✅ Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
+    // ✅ DOM Variables
+    const loginForm = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
+    const authMessage = document.getElementById("authMessage");
 
-  // ✅ ประกาศตัวแปร DOM ให้ครบ
-  const loginForm = document.getElementById("loginForm");
-  const signupForm = document.getElementById("signupForm");
-  const authMessage = document.getElementById("authMessage");
+    // ✅ Google Sign-In
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-  document.getElementById("loginTab").addEventListener("click", () => {
-    loginForm.classList.remove("hidden");
-    signupForm.classList.add("hidden");
-    authMessage.textContent = "";
-  });
+    document.getElementById("googleSignInBtn").addEventListener("click", () => {
+      auth.signInWithPopup(googleProvider)
+        .then(result => {
+          window.location.href = "index.html"; // เปลี่ยนเส้นทางหลังเข้าสู่ระบบสำเร็จ
+        })
+        .catch(error => {
+          authMessage.textContent = error.message;
+        });
+    });
 
-  document.getElementById("signupTab").addEventListener("click", () => {
-    signupForm.classList.remove("hidden");
-    loginForm.classList.add("hidden");
-    authMessage.textContent = "";
-  });
+    // ✅ Toggle Tabs
+    document.getElementById("loginTab").addEventListener("click", () => {
+      loginForm.classList.remove("hidden");
+      signupForm.classList.add("hidden");
+      authMessage.textContent = "";
+    });
 
-  loginForm.addEventListener("submit", e => {
-    e.preventDefault();
-    const email = document.getElementById("loginEmail").value;
-    const password = document.getElementById("loginPassword").value;
-    auth.signInWithEmailAndPassword(email, password)
-      .then(() => window.location.href = "index.html")
-      .catch(err => authMessage.textContent = err.message);
-  });
+    document.getElementById("signupTab").addEventListener("click", () => {
+      signupForm.classList.remove("hidden");
+      loginForm.classList.add("hidden");
+      authMessage.textContent = "";
+    });
 
-  signupForm.addEventListener("submit", e => {
-    e.preventDefault();
-    const email = document.getElementById("signupEmail").value;
-    const password = document.getElementById("signupPassword").value;
-    auth.createUserWithEmailAndPassword(email, password)
-      .then(() => window.location.href = "index.html")
-      .catch(err => authMessage.textContent = err.message);
-  });
+    // ✅ Email/Password Login
+    loginForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => window.location.href = "index.html")
+        .catch(err => authMessage.textContent = err.message);
+    });
 
-  // เปิดหน้า login เป็น default
-  document.getElementById("loginTab").click();
+    // ✅ Email/Password Signup
+    signupForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const email = document.getElementById("signupEmail").value;
+      const password = document.getElementById("signupPassword").value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => window.location.href = "index.html")
+        .catch(err => authMessage.textContent = err.message);
+    });
 
-</script>
-
-
+    // ✅ เปิดหน้า login เป็น default
+    document.getElementById("loginTab").click();
+  </script>
 </body>
 </html>
