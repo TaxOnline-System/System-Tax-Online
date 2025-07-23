@@ -36,17 +36,17 @@
       <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition" type="submit">เข้าสู่ระบบ</button>
     </form>
 
-<!-- ฟอร์มสมัครสมาชิก -->
-<form id="signupForm" class="space-y-4 hidden">
-  <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
-  <input type="text" id="signupLastName" placeholder="นามสกุล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
-  <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
-  <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
-  <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
-</form>
+    <!-- ฟอร์มสมัครสมาชิก -->
+    <form id="signupForm" class="space-y-4 hidden">
+      <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+      <input type="text" id="signupLastName" placeholder="นามสกุล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+      <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+      <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+      <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
+    </form>
 
     <div class="mt-6 border-t pt-4">
-      <!-- 🔐 ปุ่ม Google Sign-In อยู่ด้านล่าง -->
+      <!-- 🔐 ปุ่ม Google Sign-In -->
       <button id="googleSignInBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
         <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.7C34.2 32.9 30 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.6 6.7 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10.2 0 18.7-7.5 20-17.2.2-1.1.5-2.3.5-3.8z"/></svg>
         เข้าสู่ระบบด้วย Google
@@ -67,16 +67,13 @@
       appId: "1:959276043439:web:f358ce055687efea5d185a"
     };
 
-    // ✅ Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // ✅ DOM Elements
     const loginForm = document.getElementById("loginForm");
     const signupForm = document.getElementById("signupForm");
     const authMessage = document.getElementById("authMessage");
 
-    // ✅ Google Sign-In
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
     document.getElementById("googleSignInBtn").addEventListener("click", () => {
@@ -85,7 +82,6 @@
         .catch(error => authMessage.textContent = error.message);
     });
 
-    // ✅ Toggle Tabs
     document.getElementById("loginTab").addEventListener("click", () => {
       loginForm.classList.remove("hidden");
       signupForm.classList.add("hidden");
@@ -98,43 +94,38 @@
       authMessage.textContent = "";
     });
 
-    // ✅ Login Form
     loginForm.addEventListener("submit", e => {
       e.preventDefault();
-const firstName = document.getElementById("signupFirstName").value.trim();
-const lastName = document.getElementById("signupLastName").value.trim();
-const email = document.getElementById("signupEmail").value.trim();
-const password = document.getElementById("signupPassword").value;
-
-if (!firstName || !lastName || !email || !password) {
-  authMessage.textContent = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
-  return;
-}
-
-auth.createUserWithEmailAndPassword(email, password)
-  .then(userCredential => {
-    return userCredential.user.updateProfile({
-      displayName: `${firstName} ${lastName}`
-    });
-  })
-  .then(() => window.location.href = "index.html")
-  .catch(err => authMessage.textContent = err.message);
-
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      auth.signInWithEmailAndPassword(email, password)
         .then(() => window.location.href = "index.html")
         .catch(err => authMessage.textContent = err.message);
     });
 
-    // ✅ Signup Form
     signupForm.addEventListener("submit", e => {
       e.preventDefault();
-      const email = document.getElementById("signupEmail").value;
+      const firstName = document.getElementById("signupFirstName").value.trim();
+      const lastName = document.getElementById("signupLastName").value.trim();
+      const email = document.getElementById("signupEmail").value.trim();
       const password = document.getElementById("signupPassword").value;
+
+      if (!firstName || !lastName || !email || !password) {
+        authMessage.textContent = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
+        return;
+      }
+
       auth.createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          return userCredential.user.updateProfile({
+            displayName: `${firstName} ${lastName}`
+          });
+        })
         .then(() => window.location.href = "index.html")
         .catch(err => authMessage.textContent = err.message);
     });
 
-    // ✅ Default Tab
+    // Default tab
     document.getElementById("loginTab").click();
   </script>
 </body>
