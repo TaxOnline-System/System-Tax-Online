@@ -78,24 +78,35 @@
 
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+    // ตรวจสอบสถานะการเข้าสู่ระบบ
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        window.location.href = "index.html"; // ถ้าผู้ใช้ล็อกอินแล้วจะไปที่หน้าคำนวณภาษี
+      }
+    });
+
+    // ลงชื่อเข้าใช้ด้วย Google
     document.getElementById("googleSignInBtn").addEventListener("click", () => {
       auth.signInWithPopup(googleProvider)
         .then(result => window.location.href = "index.html")
         .catch(error => authMessage.textContent = error.message);
     });
 
+    // เปลี่ยนแท็บเข้าสู่ระบบ
     document.getElementById("loginTab").addEventListener("click", () => {
       loginForm.classList.remove("hidden");
       signupForm.classList.add("hidden");
       authMessage.textContent = "";
     });
 
+    // เปลี่ยนแท็บสมัครสมาชิก
     document.getElementById("signupTab").addEventListener("click", () => {
       signupForm.classList.remove("hidden");
       loginForm.classList.add("hidden");
       authMessage.textContent = "";
     });
 
+    // การสมัครสมาชิก
     signupForm.addEventListener("submit", e => {
       e.preventDefault();
 
