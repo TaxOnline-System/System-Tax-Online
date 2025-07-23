@@ -36,12 +36,14 @@
       <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition" type="submit">เข้าสู่ระบบ</button>
     </form>
 
-    <!-- ฟอร์มสมัครสมาชิก -->
-    <form id="signupForm" class="space-y-4 hidden">
-      <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
-      <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
-      <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
-    </form>
+<!-- ฟอร์มสมัครสมาชิก -->
+<form id="signupForm" class="space-y-4 hidden">
+  <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+  <input type="text" id="signupLastName" placeholder="นามสกุล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+  <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+  <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+  <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
+</form>
 
     <div class="mt-6 border-t pt-4">
       <!-- 🔐 ปุ่ม Google Sign-In อยู่ด้านล่าง -->
@@ -99,9 +101,25 @@
     // ✅ Login Form
     loginForm.addEventListener("submit", e => {
       e.preventDefault();
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
-      auth.signInWithEmailAndPassword(email, password)
+const firstName = document.getElementById("signupFirstName").value.trim();
+const lastName = document.getElementById("signupLastName").value.trim();
+const email = document.getElementById("signupEmail").value.trim();
+const password = document.getElementById("signupPassword").value;
+
+if (!firstName || !lastName || !email || !password) {
+  authMessage.textContent = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
+  return;
+}
+
+auth.createUserWithEmailAndPassword(email, password)
+  .then(userCredential => {
+    return userCredential.user.updateProfile({
+      displayName: `${firstName} ${lastName}`
+    });
+  })
+  .then(() => window.location.href = "index.html")
+  .catch(err => authMessage.textContent = err.message);
+
         .then(() => window.location.href = "index.html")
         .catch(err => authMessage.textContent = err.message);
     });
