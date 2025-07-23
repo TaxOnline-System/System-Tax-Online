@@ -22,7 +22,6 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
     #splash {
       position: fixed;
       top: 0;
@@ -38,7 +37,6 @@
       opacity: 1;
       transition: opacity 1s ease-in;
     }
-
     .splash-spinner {
       width: 60px;
       height: 60px;
@@ -47,7 +45,6 @@
       border-radius: 50%;
       animation: spin 2s linear infinite;
     }
-
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
@@ -55,32 +52,55 @@
   </style>
 </head>
 <body class="font-sans">
+
+  <!-- Splash Screen -->
   <div id="splash">
     <div class="splash-spinner"></div>
     <h2 class="text-xl font-semibold text-pink-600">กำลังโหลดระบบ...</h2>
   </div>
 
+  <!-- ส่วนแสดงวันที่เวลา -->
   <div class="fixed top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
     <span id="datetime">--:--</span>
   </div>
+
+  <!-- ปุ่ม Dark Mode -->
   <div class="fixed top-4 right-4 z-50">
     <button onclick="toggleDarkMode()" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded shadow text-sm font-medium">
       🌙 Toggle Dark Mode
     </button>
   </div>
 
+  <!-- Footer -->
+  <footer class="bg-white dark:bg-gray-900 mt-16 p-4 text-center text-sm text-gray-500 dark:text-gray-400 fade-in">
+    &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์
+  </footer>
+
+  <!-- JavaScript -->
   <script>
+    // ซ่อน Splash เมื่อโหลดเสร็จ
+    window.addEventListener('load', () => {
+      const splash = document.getElementById('splash');
+      if (splash) {
+        splash.style.opacity = '0';
+        setTimeout(() => splash.style.display = 'none', 1000);
+      }
+    });
+
+    // Dark Mode Toggle
     function toggleDarkMode() {
       document.documentElement.classList.toggle("dark");
       localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
     }
 
+    // โหลด Dark Mode จาก LocalStorage
     (function () {
       if (localStorage.getItem("theme") === "dark") {
         document.documentElement.classList.add("dark");
       }
     })();
 
+    // อัปเดตวันที่และเวลา
     function updateDateTime() {
       const now = new Date();
       const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -91,9 +111,5 @@
     setInterval(updateDateTime, 1000);
     updateDateTime();
   </script>
-
-  <footer class="bg-white dark:bg-gray-900 mt-16 p-4 text-center text-sm text-gray-500 dark:text-gray-400 fade-in">
-    &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์
-  </footer>
 </body>
 </html>
