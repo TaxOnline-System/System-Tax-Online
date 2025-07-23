@@ -22,9 +22,46 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
+    
+    /* 🌀 Splash Screen Style */
+    #splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 1s ease-in;
+    }
+
+    .splash-spinner {
+      width: 60px;
+      height: 60px;
+      border: 8px solid transparent;
+      border-top-color: #ec4899;
+      border-radius: 50%;
+      animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="font-sans">
+  <!-- 🔄 Splash Screen -->
+  <div id="splash">
+    <div class="splash-spinner"></div>
+    <h2 class="text-xl font-semibold text-pink-600">กำลังโหลดระบบ...</h2>
+  </div>
+
   <div class="fixed top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
     <span id="datetime">--:--</span>
   </div>
@@ -33,6 +70,111 @@
       🌙 Toggle Dark Mode
     </button>
   </div>
+<script>
+  // การตั้งค่า Dark Mode และบันทึกสถานะใน LocalStorage
+  function toggleDarkMode() {
+    // สลับโหมดแสงและมืด
+    document.documentElement.classList.toggle("dark");
+    
+    // เก็บสถานะ Dark Mode ลง localStorage
+    const theme = document.documentElement.classList.contains("dark") ? "dark" : "light";
+    localStorage.setItem("theme", theme);
+  }
+
+  // โหลด theme จาก localStorage เมื่อหน้าเว็บโหลด
+  (function () {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.documentElement.classList.add(savedTheme);
+    }
+  })();
+
+  function updateDateTime() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const timeStr = now.toLocaleTimeString('th-TH');
+    const dateStr = now.toLocaleDateString('th-TH', options);
+    document.getElementById('datetime').innerText = `${dateStr} ${timeStr}`;
+  }
+  setInterval(updateDateTime, 1000);
+  updateDateTime();
+
+  document.getElementById('receiptUpload').addEventListener('change', function () {
+    const files = this.files;
+    const fileInfo = document.getElementById('fileInfo');
+    const previewArea = document.getElementById('previewArea');
+
+    fileInfo.innerText = `คุณเลือก ${files.length} ไฟล์`;
+    previewArea.innerHTML = '';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+
+      if (file.type.startsWith('image/')) {
+        reader.onload = function (e) {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = file.name;
+          img.className = 'w-full h-24 object-cover rounded shadow';
+          previewArea.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const fileLabel = document.createElement('p');
+        fileLabel.textContent = `📄 ${file.name}`;
+        fileLabel.className = 'text-xs text-gray-700 dark:text-gray-300';
+        previewArea.appendChild(fileLabel);
+      }
+    }
+  });
+
+  function calculateTax(income, expense, deduction) {
+    let netIncome = income - expense - deduction;
+    return netIncome <= 150000 ? 0 : netIncome * 0.05;
+  }
+
+  document.getElementById("taxForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const income = parseFloat(document.getElementById("income").value);
+    const expense = parseFloat(document.getElementById("expense").value);
+    const deduction = parseFloat(document.getElementById("deduction").value);
+
+    if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
+      alert("กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข");
+      return;
+    }
+
+    const tax = calculateTax(income, expense, deduction);
+    const ctx = document.getElementById('taxPieChart').getContext('2d');
+    if (window.taxChart instanceof Chart) window.taxChart.destroy();
+
+    const taxPercentage = (income - expense - deduction > 150000) ? 100 : 0;
+    window.taxChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
+        datasets: [{
+          data: [taxPercentage, 100 - taxPercentage],
+          backgroundColor: ['#ef4444', '#22c55e'],
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          title: {
+            display: true,
+            text: `ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท`,
+            font: { size: 16 }
+          }
+        }
+      }
+    });
+  });
+</script>
+
   <header class="bg-white dark:bg-gray-900 shadow p-4 fade-in">
     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
       <h1 class="text-2xl font-bold text-pink-600 dark:text-yellow-300 mb-2 sm:mb-0">TaxOnline</h1>
@@ -44,6 +186,7 @@
       </nav>
     </div>
   </header>
+
   <section class="text-center py-12 px-6 sm:px-12 fade-in">
     <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 dark:text-yellow-300 mb-4">
       คำนวณภาษีออนไลน์ <br class="sm:hidden" /> ง่ายภายใน 1 นาที!
@@ -57,45 +200,53 @@
       </a>
     </div>
   </section>
+
   <section id="calculator" class="px-4 sm:px-6 fade-in">
     <div class="max-w-md mx-auto bg-white dark:bg-gray-900 p-6 sm:p-8 rounded-2xl shadow-xl">
       <h3 class="text-xl sm:text-2xl font-semibold text-center text-blue-600 dark:text-purple-300 mb-4">ฟอร์มคำนวณภาษี</h3>
       <form class="space-y-4" id="taxForm">
-        <div><label class="block text-sm font-medium text-gray-800 dark:text-gray-200">รายได้ทั้งหมด (บาท)</label>
-          <input type="number" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="income" /></div>
-        <div><label class="block text-sm font-medium text-gray-800 dark:text-gray-200">รายจ่ายทั้งหมด (บาท)</label>
-          <input type="number" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="expense" /></div>
-        <div><label class="block text-sm font-medium text-gray-800 dark:text-gray-200">ค่าลดหย่อน (บาท)</label>
-          <input type="number" value="60000" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="deduction" /></div>
+        <div>
+          <label class="block text-sm font-medium text-gray-800 dark:text-gray-200">รายได้ทั้งหมด (บาท)</label>
+          <input type="number" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="income" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-800 dark:text-gray-200">รายจ่ายทั้งหมด (บาท)</label>
+          <input type="number" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="expense" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-800 dark:text-gray-200">ค่าลดหย่อน (บาท)</label>
+          <input type="number" value="60000" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" id="deduction" />
+        </div>
         <div class="mb-4">
           <label for="receiptUpload" class="block text-sm font-medium text-gray-800 dark:text-gray-200">อัปโหลดใบเสร็จ (ไม่บังคับ)</label>
-          <input type="file" id="receiptUpload" name="receiptUpload" accept=".jpg, .jpeg, .png, .pdf" multiple
-                 class="mt-1 block w-full text-sm text-gray-500
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-blue-50 file:text-blue-700
-                        hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-white dark:hover:file:bg-gray-600">
-          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">รองรับไฟล์ JPG, PNG, PDF (อัปโหลดได้หลายไฟล์)</p>
+          <input type="file" id="receiptUpload" accept="image/*,.pdf" multiple
+            class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-white dark:hover:file:bg-gray-600">
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">รองรับการถ่ายภาพหรือเลือกไฟล์ JPG, PNG, PDF ได้ (อัปโหลดได้หลายไฟล์)</p>
+          <div id="fileInfo" class="mt-2 text-sm text-gray-700 dark:text-gray-300"></div>
+          <div id="previewArea" class="mt-2 grid grid-cols-3 gap-2"></div>
         </div>
         <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition">คำนวณภาษี</button>
       </form>
       <div class="mt-6"><canvas id="taxPieChart"></canvas></div>
     </div>
   </section>
+
   <footer class="bg-white dark:bg-gray-900 mt-16 p-4 text-center text-sm text-gray-500 dark:text-gray-400 fade-in">
     &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์
   </footer>
+
   <script>
     function toggleDarkMode() {
       document.documentElement.classList.toggle("dark");
       localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
     }
+
     (function () {
       if (localStorage.getItem("theme") === "dark") {
         document.documentElement.classList.add("dark");
       }
     })();
+
     function updateDateTime() {
       const now = new Date();
       const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -105,74 +256,14 @@
     }
     setInterval(updateDateTime, 1000);
     updateDateTime();
-    function calculateTax(income, expense, deduction) {
-      let netIncome = income - expense - deduction;
-      // If net income is less than or equal to 150,000 THB, tax is 0. Otherwise, it's 5% of net income.
-      return netIncome <= 150000 ? 0 : netIncome * 0.05;
-    }
-    document.getElementById("taxForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const income = parseFloat(document.getElementById("income").value);
-      const expense = parseFloat(document.getElementById("expense").value);
-      const deduction = parseFloat(document.getElementById("deduction").value);
 
-      // Validate inputs
-      if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
-        alert("กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข");
-        return;
-      }
-
-      const tax = calculateTax(income, expense, deduction);
-
-      // Determine tax liability for the chart
-      let taxPercentage = 0;
-      if (income - expense - deduction > 150000) {
-        taxPercentage = 100; // หมายถึงต้องเสียภาษี
-      }
-
-      const ctx = document.getElementById('taxPieChart').getContext('2d');
-      // Destroy existing chart if it exists to prevent overlap
-      if (window.taxChart instanceof Chart) {
-        window.taxChart.destroy();
-      }
-      window.taxChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
-          datasets: [{
-            data: [taxPercentage, 100 - taxPercentage],
-            backgroundColor: ['#ef4444', '#22c55e'], // Red for tax, Green for no tax
-            hoverOffset: 4
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'top',
-            },
-            title: {
-              display: true,
-              text: `ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท`,
-              font: {
-                size: 16
-              }
-            }
-          }
-        }
-      });
-
-      // Handle file uploads (for demonstration purposes, just log the files)
-      const receiptFiles = document.getElementById('receiptUpload').files;
-      if (receiptFiles.length > 0) {
-        console.log('ไฟล์ใบเสร็จที่อัปโหลด:');
-        for (let i = 0; i < receiptFiles.length; i++) {
-          console.log(`- ${receiptFiles[i].name} (${(receiptFiles[i].size / 1024).toFixed(2)} KB)`);
-        }
-        alert(`อัปโหลดใบเสร็จ ${receiptFiles.length} ไฟล์แล้ว (การอัปโหลดนี้เป็นการจำลองเท่านั้น, ยังไม่มีการจัดเก็บจริง)`);
-      } else {
-        console.log('ไม่มีไฟล์ใบเสร็จที่อัปโหลด');
-      }
+    // ซ่อน Splash Screen หลังจากโหลดเสร็จ
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        const splash = document.getElementById("splash");
+        splash.style.opacity = "0";
+        setTimeout(() => splash.style.display = "none", 1000); // ทำให้ Splash หายไป
+      }, 1500); // Splash จะค้างไว้ 1.5 วินาที
     });
   </script>
 </body>
