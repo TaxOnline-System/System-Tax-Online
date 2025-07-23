@@ -14,39 +14,42 @@
       animation: gradientBG 15s ease infinite;
     }
     @keyframes gradientBG {
-      0% {background-position: 0% 50%;}
-      50% {background-position: 100% 50%;}
-      100% {background-position: 0% 50%;}
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
   </style>
 </head>
 <body class="font-sans">
-  <div class="max-w-md mx-auto mt-24 bg-white p-6 rounded-xl shadow-xl">
-    <h2 class="text-2xl font-bold text-center text-pink-600 mb-4">เข้าสู่ระบบ / สมัครสมาชิก</h2>
-    
-    <!-- 🔐 ปุ่ม Google Sign-In -->
-    <button id="googleSignInBtn" class="w-full bg-red-500 text-white py-2 rounded mb-4">
-      🔐 เข้าสู่ระบบด้วย Google
-    </button>
+  <div class="max-w-md mx-auto mt-24 bg-white p-8 rounded-2xl shadow-2xl animate-fade-in">
+    <h2 class="text-2xl font-bold text-center text-pink-600 mb-6">เข้าสู่ระบบ / สมัครสมาชิก</h2>
 
-    <div class="flex justify-center space-x-4 mb-4">
-      <button id="loginTab" class="px-4 py-2 bg-blue-600 text-white rounded">เข้าสู่ระบบ</button>
-      <button id="signupTab" class="px-4 py-2 bg-green-600 text-white rounded">สมัครสมาชิก</button>
+    <div class="flex justify-center space-x-4 mb-6">
+      <button id="loginTab" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition">เข้าสู่ระบบ</button>
+      <button id="signupTab" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full transition">สมัครสมาชิก</button>
     </div>
 
     <!-- ฟอร์มเข้าสู่ระบบ -->
     <form id="loginForm" class="space-y-4 hidden">
-      <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-2 border rounded" />
-      <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-2 border rounded" />
-      <button class="w-full bg-blue-600 text-white py-2 rounded" type="submit">เข้าสู่ระบบ</button>
+      <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition" type="submit">เข้าสู่ระบบ</button>
     </form>
 
     <!-- ฟอร์มสมัครสมาชิก -->
     <form id="signupForm" class="space-y-4 hidden">
-      <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-2 border rounded" />
-      <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-2 border rounded" />
-      <button class="w-full bg-green-600 text-white py-2 rounded" type="submit">สมัครสมาชิก</button>
+      <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+      <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
+      <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
     </form>
+
+    <div class="mt-6 border-t pt-4">
+      <!-- 🔐 ปุ่ม Google Sign-In อยู่ด้านล่าง -->
+      <button id="googleSignInBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
+        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.7C34.2 32.9 30 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.6 6.7 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10.2 0 18.7-7.5 20-17.2.2-1.1.5-2.3.5-3.8z"/></svg>
+        เข้าสู่ระบบด้วย Google
+      </button>
+    </div>
 
     <p id="authMessage" class="text-red-500 text-center mt-4 text-sm"></p>
   </div>
@@ -66,7 +69,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // ✅ DOM Variables
+    // ✅ DOM Elements
     const loginForm = document.getElementById("loginForm");
     const signupForm = document.getElementById("signupForm");
     const authMessage = document.getElementById("authMessage");
@@ -76,12 +79,8 @@
 
     document.getElementById("googleSignInBtn").addEventListener("click", () => {
       auth.signInWithPopup(googleProvider)
-        .then(result => {
-          window.location.href = "index.html"; // เปลี่ยนเส้นทางหลังเข้าสู่ระบบสำเร็จ
-        })
-        .catch(error => {
-          authMessage.textContent = error.message;
-        });
+        .then(result => window.location.href = "index.html")
+        .catch(error => authMessage.textContent = error.message);
     });
 
     // ✅ Toggle Tabs
@@ -97,7 +96,7 @@
       authMessage.textContent = "";
     });
 
-    // ✅ Email/Password Login
+    // ✅ Login Form
     loginForm.addEventListener("submit", e => {
       e.preventDefault();
       const email = document.getElementById("loginEmail").value;
@@ -107,7 +106,7 @@
         .catch(err => authMessage.textContent = err.message);
     });
 
-    // ✅ Email/Password Signup
+    // ✅ Signup Form
     signupForm.addEventListener("submit", e => {
       e.preventDefault();
       const email = document.getElementById("signupEmail").value;
@@ -117,7 +116,7 @@
         .catch(err => authMessage.textContent = err.message);
     });
 
-    // ✅ เปิดหน้า login เป็น default
+    // ✅ Default Tab
     document.getElementById("loginTab").click();
   </script>
 </body>
