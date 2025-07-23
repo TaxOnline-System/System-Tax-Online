@@ -47,6 +47,7 @@
     </form>
 
     <div class="mt-6 border-t pt-4">
+      <!-- 🔐 ปุ่ม Google Sign-In -->
       <button id="googleSignInBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
         <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.7C34.2 32.9 30 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.6 6.7 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10.2 0 18.7-7.5 20-17.2.2-1.1.5-2.3.5-3.8z"/></svg>
         เข้าสู่ระบบด้วย Google
@@ -77,35 +78,24 @@
 
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-    // ตรวจสอบสถานะการเข้าสู่ระบบ
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        window.location.href = "index.html"; // ถ้าผู้ใช้ล็อกอินแล้วจะไปที่หน้าคำนวณภาษี
-      }
-    });
-
-    // ลงชื่อเข้าใช้ด้วย Google
     document.getElementById("googleSignInBtn").addEventListener("click", () => {
       auth.signInWithPopup(googleProvider)
         .then(result => window.location.href = "index.html")
         .catch(error => authMessage.textContent = error.message);
     });
 
-    // เปลี่ยนแท็บเข้าสู่ระบบ
     document.getElementById("loginTab").addEventListener("click", () => {
       loginForm.classList.remove("hidden");
       signupForm.classList.add("hidden");
       authMessage.textContent = "";
     });
 
-    // เปลี่ยนแท็บสมัครสมาชิก
     document.getElementById("signupTab").addEventListener("click", () => {
       signupForm.classList.remove("hidden");
       loginForm.classList.add("hidden");
       authMessage.textContent = "";
     });
 
-    // การสมัครสมาชิก
     signupForm.addEventListener("submit", e => {
       e.preventDefault();
 
@@ -125,7 +115,7 @@
 
           // อัปเดตชื่อใน Firebase Auth
           return user.updateProfile({
-            displayName: `${firstName} ${lastName}` 
+            displayName: `${firstName} ${lastName}`
           }).then(() => {
             // บันทึกลง Firestore
             return db.collection("users").doc(user.uid).set({
