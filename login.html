@@ -24,15 +24,20 @@
 <body class="font-sans">
   <div class="max-w-md mx-auto mt-24 bg-white p-8 rounded-2xl shadow-2xl animate-fade-in">
     <h2 class="text-2xl font-bold text-center text-pink-600 mb-6">เข้าสู่ระบบ / สมัครสมาชิก</h2>
+
     <div class="flex justify-center space-x-4 mb-6">
       <button id="loginTab" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition">เข้าสู่ระบบ</button>
       <button id="signupTab" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full transition">สมัครสมาชิก</button>
     </div>
+
+    <!-- ฟอร์มเข้าสู่ระบบ -->
     <form id="loginForm" class="space-y-4 hidden">
       <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
       <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
       <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition" type="submit">เข้าสู่ระบบ</button>
     </form>
+
+    <!-- ฟอร์มสมัครสมาชิก -->
     <form id="signupForm" class="space-y-4 hidden">
       <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
       <input type="text" id="signupLastName" placeholder="นามสกุล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
@@ -40,15 +45,19 @@
       <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400" />
       <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
     </form>
+
     <div class="mt-6 border-t pt-4">
       <button id="googleSignInBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition">
-        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#fff" d="..."/></svg>
+        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.7C34.2 32.9 30 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l6-6C34.6 6.7 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10.2 0 18.7-7.5 20-17.2.2-1.1.5-2.3.5-3.8z"/></svg>
         เข้าสู่ระบบด้วย Google
       </button>
     </div>
+
     <p id="authMessage" class="text-red-500 text-center mt-4 text-sm"></p>
   </div>
+
   <script>
+    // ✅ Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
       authDomain: "tax-online-6afdd.firebaseapp.com",
@@ -57,49 +66,86 @@
       messagingSenderId: "959276043439",
       appId: "1:959276043439:web:f358ce055687efea5d185a"
     };
+
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const db = firebase.firestore(); // Firestore Database
     const auth = firebase.auth();
+
     const loginForm = document.getElementById("loginForm");
     const signupForm = document.getElementById("signupForm");
     const authMessage = document.getElementById("authMessage");
+
     const googleProvider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().onAuthStateChanged(user => { if (user) { window.location.href = "index.html"; }});
-    document.getElementById("googleSignInBtn").addEventListener("click", () => {
-      auth.signInWithPopup(googleProvider).then(result => window.location.href = "index.html").catch(error => authMessage.textContent = error.message);
+
+    // ตรวจสอบสถานะการเข้าสู่ระบบ
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        window.location.href = "index.html"; // ถ้าผู้ใช้ล็อกอินแล้วจะไปที่หน้าคำนวณภาษี
+      }
     });
+
+    // ลงชื่อเข้าใช้ด้วย Google
+    document.getElementById("googleSignInBtn").addEventListener("click", () => {
+      auth.signInWithPopup(googleProvider)
+        .then(result => window.location.href = "index.html")
+        .catch(error => authMessage.textContent = error.message);
+    });
+
+    // เปลี่ยนแท็บเข้าสู่ระบบ
     document.getElementById("loginTab").addEventListener("click", () => {
       loginForm.classList.remove("hidden");
       signupForm.classList.add("hidden");
       authMessage.textContent = "";
     });
+
+    // เปลี่ยนแท็บสมัครสมาชิก
     document.getElementById("signupTab").addEventListener("click", () => {
       signupForm.classList.remove("hidden");
       loginForm.classList.add("hidden");
       authMessage.textContent = "";
     });
+
+    // การสมัครสมาชิก
     signupForm.addEventListener("submit", e => {
       e.preventDefault();
+
       const firstName = document.getElementById("signupFirstName").value.trim();
       const lastName = document.getElementById("signupLastName").value.trim();
       const email = document.getElementById("signupEmail").value.trim();
       const password = document.getElementById("signupPassword").value;
+
       if (!firstName || !lastName || !email || !password) {
         authMessage.textContent = "กรุณากรอกข้อมูลให้ครบทุกช่อง";
         return;
       }
-      auth.createUserWithEmailAndPassword(email, password).then(userCredential => {
-        const user = userCredential.user;
-        return user.updateProfile({ displayName: `${firstName} ${lastName}` }).then(() => {
-          return db.collection("users").doc(user.uid).set({
-            uid: user.uid,
-            firstName, lastName, email,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const user = userCredential.user;
+
+          // อัปเดตชื่อใน Firebase Auth
+          return user.updateProfile({
+            displayName: `${firstName} ${lastName}` 
+          }).then(() => {
+            // บันทึกลง Firestore
+            return db.collection("users").doc(user.uid).set({
+              uid: user.uid,
+              firstName: firstName,
+              lastName: lastName,
+              email: email,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
           });
+        })
+        .then(() => {
+          window.location.href = "index.html";
+        })
+        .catch(err => {
+          authMessage.textContent = err.message;
         });
-      }).then(() => { window.location.href = "index.html"; })
-        .catch(err => { authMessage.textContent = err.message; });
     });
+
+    // Default tab
     document.getElementById("loginTab").click();
   </script>
 </body>
