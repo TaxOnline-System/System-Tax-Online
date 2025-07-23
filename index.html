@@ -7,11 +7,6 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    .fade-in { animation: fadeIn 1s ease-in; }
-    @keyframes fadeIn {
-      0% { opacity: 0; transform: translateY(10px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
     body {
       background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd);
       background-size: 400% 400%;
@@ -22,94 +17,50 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-    #splash {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: white;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      opacity: 1;
-      transition: opacity 1s ease-in;
-    }
-    .splash-spinner {
-      width: 60px;
-      height: 60px;
-      border: 8px solid transparent;
-      border-top-color: #ec4899;
-      border-radius: 50%;
-      animation: spin 2s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
   </style>
 </head>
 <body class="font-sans">
+  <!-- หน้าแสดงระบบคำนวณภาษี -->
 
-  <!-- Splash Screen -->
-  <div id="splash">
-    <div class="splash-spinner"></div>
-    <h2 class="text-xl font-semibold text-pink-600">กำลังโหลดระบบ...</h2>
-  </div>
+  <form id="taxForm">
+    <input type="number" id="income" placeholder="รายได้" />
+    <input type="number" id="expense" placeholder="รายจ่าย" />
+    <input type="number" id="deduction" placeholder="ค่าลดหย่อน" />
+    <button type="submit">คำนวณภาษี</button>
+  </form>
 
-  <!-- ส่วนแสดงวันที่เวลา -->
-  <div class="fixed top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
-    <span id="datetime">--:--</span>
-  </div>
+  <canvas id="taxPieChart"></canvas>
 
-  <!-- ปุ่ม Dark Mode -->
-  <div class="fixed top-4 right-4 z-50">
-    <button onclick="toggleDarkMode()" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded shadow text-sm font-medium">
-      🌙 Toggle Dark Mode
-    </button>
-  </div>
-
-  <!-- Footer -->
-  <footer class="bg-white dark:bg-gray-900 mt-16 p-4 text-center text-sm text-gray-500 dark:text-gray-400 fade-in">
-    &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์
-  </footer>
-
-  <!-- JavaScript -->
   <script>
-    // ซ่อน Splash เมื่อโหลดเสร็จ
-    window.addEventListener('load', () => {
-      const splash = document.getElementById('splash');
-      if (splash) {
-        splash.style.opacity = '0';
-        setTimeout(() => splash.style.display = 'none', 1000);
-      }
+    // การคำนวณภาษี
+    function calculateTax(income, expense, deduction) {
+      let netIncome = income - expense - deduction;
+      return netIncome <= 150000 ? 0 : netIncome * 0.05;
+    }
+
+    // เมื่อฟอร์มส่งข้อมูล
+    document.getElementById("taxForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const income = parseFloat(document.getElementById("income").value);
+      const expense = parseFloat(document.getElementById("expense").value);
+      const deduction = parseFloat(document.getElementById("deduction").value);
+
+      const tax = calculateTax(income, expense, deduction);
+      const ctx = document.getElementById('taxPieChart').getContext('2d');
+
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
+          datasets: [{
+            data: [tax > 0 ? 100 : 0, tax > 0 ? 0 : 100],
+            backgroundColor: ['#ef4444', '#22c55e'],
+            hoverOffset: 4
+          }]
+        }
+      });
     });
-
-    // Dark Mode Toggle
-    function toggleDarkMode() {
-      document.documentElement.classList.toggle("dark");
-      localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
-    }
-
-    // โหลด Dark Mode จาก LocalStorage
-    (function () {
-      if (localStorage.getItem("theme") === "dark") {
-        document.documentElement.classList.add("dark");
-      }
-    })();
-
-    // อัปเดตวันที่และเวลา
-    function updateDateTime() {
-      const now = new Date();
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      const timeStr = now.toLocaleTimeString('th-TH');
-      const dateStr = now.toLocaleDateString('th-TH', options);
-      document.getElementById('datetime').innerText = `${dateStr} ${timeStr}`;
-    }
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
   </script>
 </body>
 </html>
