@@ -21,27 +21,34 @@
 </head>
 <body class="font-sans">
   <!-- หน้าแสดงระบบคำนวณภาษี -->
-
-  <form id="taxForm">
-    <input type="number" id="income" placeholder="รายได้" />
-    <input type="number" id="expense" placeholder="รายจ่าย" />
-    <input type="number" id="deduction" placeholder="ค่าลดหย่อน" />
-    <button type="submit">คำนวณภาษี</button>
+  <form id="taxForm" class="p-8 bg-white rounded-xl shadow-xl">
+    <div class="space-y-4">
+      <input type="number" id="income" placeholder="รายได้" class="w-full p-3 border rounded-lg focus:outline-none" required />
+      <input type="number" id="expense" placeholder="รายจ่าย" class="w-full p-3 border rounded-lg focus:outline-none" required />
+      <input type="number" id="deduction" placeholder="ค่าลดหย่อน" class="w-full p-3 border rounded-lg focus:outline-none" required />
+      <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold">คำนวณภาษี</button>
+    </div>
   </form>
 
-  <canvas id="taxPieChart"></canvas>
+  <div class="mt-8">
+    <canvas id="taxPieChart"></canvas>
+  </div>
+
+  <div class="mt-4">
+    <input type="file" id="receiptUpload" accept="image/*,.pdf" multiple class="block w-full text-sm text-gray-500">
+    <p id="fileInfo" class="text-sm mt-2"></p>
+  </div>
 
   <script>
-    // การคำนวณภาษี
+    // คำนวณภาษี
     function calculateTax(income, expense, deduction) {
       let netIncome = income - expense - deduction;
       return netIncome <= 150000 ? 0 : netIncome * 0.05;
     }
 
-    // เมื่อฟอร์มส่งข้อมูล
+    // ฟอร์มคำนวณภาษี
     document.getElementById("taxForm").addEventListener("submit", function (e) {
       e.preventDefault();
-
       const income = parseFloat(document.getElementById("income").value);
       const expense = parseFloat(document.getElementById("expense").value);
       const deduction = parseFloat(document.getElementById("deduction").value);
@@ -60,6 +67,13 @@
           }]
         }
       });
+    });
+
+    // ระบบอัปโหลดไฟล์ใบเสร็จ
+    document.getElementById('receiptUpload').addEventListener('change', function () {
+      const files = this.files;
+      const fileInfo = document.getElementById('fileInfo');
+      fileInfo.innerText = `คุณเลือก ${files.length} ไฟล์`;
     });
   </script>
 </body>
