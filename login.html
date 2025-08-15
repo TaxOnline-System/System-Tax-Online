@@ -69,4 +69,31 @@ document.getElementById("googleSignInBtn").addEventListener("click", () => {
 document.getElementById("loginTab").addEventListener("click", ()=>{
   loginForm.classList.remove("hidden");
   signupForm.classList.add("hidden");
- 
+  authMessage.textContent="";
+});
+document.getElementById("signupTab").addEventListener("click", ()=>{
+  signupForm.classList.remove("hidden");
+  loginForm.classList.add("hidden");
+  authMessage.textContent="";
+});
+
+signupForm.addEventListener("submit", e=>{
+  e.preventDefault();
+  const firstName=document.getElementById("signupFirstName").value.trim();
+  const lastName=document.getElementById("signupLastName").value.trim();
+  const email=document.getElementById("signupEmail").value.trim();
+  const password=document.getElementById("signupPassword").value;
+  if(!firstName||!lastName||!email||!password){authMessage.textContent="กรุณากรอกข้อมูลให้ครบทุกช่อง";return;}
+  auth.createUserWithEmailAndPassword(email,password)
+    .then(userCredential=>{
+      const user=userCredential.user;
+      return user.updateProfile({displayName:`${firstName} ${lastName}`}).then(()=>{
+        return db.collection("users").doc(user.uid).set({uid:user.uid,firstName:firstName,lastName:lastName,email:email,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      });
+    }).then(()=>window.location.href="index.html").catch(err=>authMessage.textContent=err.message);
+});
+
+document.getElementById("loginTab").click();
+</script>
+</body>
+</html>
