@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ยินดีต้อนรับ - TaxOnline</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .fade-in {
+      animation: fadeIn 1s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-center text-white">
+
+  <h1 class="text-4xl font-bold fade-in">ยินดีต้อนรับสู่</h1>
+  <h2 class="text-5xl font-extrabold text-yellow-300 fade-in mt-2">TaxOnline</h2>
+  <p class="mt-4 max-w-md fade-in text-lg">ระบบคำนวณภาษีสำหรับพ่อค้าแม่ค้าออนไลน์<br>ใช้งานง่าย ฟรี และถูกต้องตามกฎหมาย</p>
+
+  <a href="login.html" 
+     class="mt-8 px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-lg rounded-full shadow-lg transition fade-in">
+    🚀 เริ่มใช้งาน / เข้าสู่ระบบ
+  </a>
+
+  <footer class="absolute bottom-4 text-sm opacity-80">
+    &copy; 2025 TaxOnline
+  </footer>
+</body>
+</html>
