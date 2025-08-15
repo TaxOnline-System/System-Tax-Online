@@ -18,17 +18,14 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-    .fade-in {
-      animation: fadeIn 1s ease-in-out;
-    }
+    .fade-in { animation: fadeIn 1s ease-in-out; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
     /* Splash Loader */
     #splash {
-      position: fixed;
-      top: 0; left: 0;
+      position: fixed; top: 0; left: 0;
       width: 100%; height: 100%;
       background-color: white;
       display: flex; flex-direction: column;
@@ -66,17 +63,15 @@
     ใช้งานง่าย ฟรี และถูกต้องตามกฎหมาย
   </p>
 
-  <a href="login.html" 
-     class="mt-8 px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-lg rounded-full shadow-lg transition fade-in">
-    🚀 เริ่มใช้งาน / เข้าสู่ระบบ
-  </a>
+  <!-- ปุ่มจะถูกกำหนดใน JavaScript -->
+  <div id="actionBtn" class="mt-8 fade-in"></div>
 
   <footer class="absolute bottom-4 text-sm opacity-80">
     &copy; 2025 TaxOnline
   </footer>
 
   <script>
-    // Firebase Config (ใช้ของคุณ)
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
       authDomain: "tax-online-6afdd.firebaseapp.com",
@@ -87,17 +82,30 @@
     };
     firebase.initializeApp(firebaseConfig);
 
-    // ตรวจสอบการ Login
+    const actionBtn = document.getElementById("actionBtn");
+
     firebase.auth().onAuthStateChanged(user => {
+      // ซ่อน Splash หลังโหลด 1.5 วินาที
+      setTimeout(() => {
+        document.getElementById("splash").style.opacity = "0";
+        setTimeout(() => document.getElementById("splash").style.display = "none", 800);
+      }, 1500);
+
+      // แสดงปุ่มตามสถานะผู้ใช้
       if (user) {
-        // ถ้า Login แล้ว ข้ามไป index.html
-        window.location.href = "index.html";
+        actionBtn.innerHTML = `
+          <a href="index.html" 
+             class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white text-lg rounded-full shadow-lg transition">
+            ✅ ไปหน้าหลัก
+          </a>
+        `;
       } else {
-        // แสดงหน้าต้อนรับ หลัง Splash
-        setTimeout(() => {
-          document.getElementById("splash").style.opacity = "0";
-          setTimeout(() => document.getElementById("splash").style.display = "none", 800);
-        }, 1500);
+        actionBtn.innerHTML = `
+          <a href="login.html" 
+             class="px-8 py-3 bg-pink-500 hover:bg-pink-600 text-white text-lg rounded-full shadow-lg transition">
+            🚀 เริ่มใช้งาน / เข้าสู่ระบบ
+          </a>
+        `;
       }
     });
   </script>
