@@ -1,99 +1,40 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TaxOnline - คำนวณภาษีออนไลน์</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TaxOnline - กำลังโหลด...</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
     body {
-      background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd);
+      background: linear-gradient(-45deg,#e0c3fc,#8ec5fc,#fbc2eb,#a1c4fd);
       background-size: 400% 400%;
       animation: gradientAnimation 15s ease infinite;
-    }
-    @keyframes gradientAnimation {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-    /* 🌀 Splash Screen Style */
-    #splash {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: white;
+      height: 100vh;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
-      z-index: 9999;
-      opacity: 1;
-      transition: opacity 1s ease-in;
+      flex-direction: column;
+    }
+    @keyframes gradientAnimation {
+      0%{background-position:0% 50%}
+      50%{background-position:100% 50%}
+      100%{background-position:0% 50%}
     }
     .splash-spinner {
-      width: 60px;
-      height: 60px;
-      border: 8px solid transparent;
-      border-top-color: #ec4899;
-      border-radius: 50%;
+      width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;
       animation: spin 2s linear infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    @keyframes spin {0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
   </style>
 </head>
-<body class="font-sans">
-  <!-- 🌀 Splash Screen -->
-  <div id="splash">
-    <div class="splash-spinner"></div>
-    <h2 class="text-xl font-semibold text-pink-600">กำลังโหลดระบบ...</h2>
-  </div>
-
-  <div class="fixed top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
-    <span id="datetime">--:--</span>
-  </div>
-  <div class="fixed top-4 right-4 z-50">
-    <button onclick="toggleDarkMode()" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded shadow text-sm font-medium">
-      🌙 Toggle Dark Mode
-    </button>
-  </div>
+<body>
+  <div class="splash-spinner"></div>
+  <h2 class="text-xl font-semibold mt-4 text-pink-600">กำลังโหลดระบบ...</h2>
 
   <script>
-    // Toggle Dark Mode & save in localStorage
-    function toggleDarkMode() {
-      document.documentElement.classList.toggle("dark");
-      localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
-    }
-
-    (function () {
-      if (localStorage.getItem("theme") === "dark") {
-        document.documentElement.classList.add("dark");
-      }
-    })();
-
-    // Show date & time in real-time
-    function updateDateTime() {
-      const now = new Date();
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      const timeStr = now.toLocaleTimeString('th-TH');
-      const dateStr = now.toLocaleDateString('th-TH', options);
-      document.getElementById('datetime').innerText = `${dateStr} ${timeStr}`;
-    }
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
-
-    // Hide splash screen after page load
-    window.addEventListener('load', () => {
-      const splash = document.getElementById('splash');
-      if (splash) {
-        splash.style.opacity = '0';
-        setTimeout(() => splash.style.display = 'none', 1000);
-      }
+    window.addEventListener('load',()=>{
+      setTimeout(()=>{window.location.href='welcome.html'},1500);
     });
   </script>
 </body>
