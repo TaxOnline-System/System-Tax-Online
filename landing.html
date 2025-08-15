@@ -1,40 +1,42 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaxOnline - กำลังโหลด...</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    body {
-      background: linear-gradient(-45deg,#e0c3fc,#8ec5fc,#fbc2eb,#a1c4fd);
-      background-size: 400% 400%;
-      animation: gradientAnimation 15s ease infinite;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-    @keyframes gradientAnimation {
-      0%{background-position:0% 50%}
-      50%{background-position:100% 50%}
-      100%{background-position:0% 50%}
-    }
-    .splash-spinner {
-      width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;
-      animation: spin 2s linear infinite;
-    }
-    @keyframes spin {0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaxOnline - กำลังโหลด...</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+<style>
+  body {
+    background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd);
+    background-size: 400% 400%;
+    animation: gradientAnimation 15s ease infinite;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  @keyframes gradientAnimation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .splash-spinner {
+    width: 60px;
+    height: 60px;
+    border: 8px solid transparent;
+    border-top-color: #ec4899;
+    border-radius: 50%;
+    animation: spin 1.5s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
 </head>
-<body>
+<body class="font-sans flex flex-col items-center justify-center text-center text-pink-600">
   <div class="splash-spinner"></div>
-  <h2 class="text-xl font-semibold mt-4 text-pink-600">กำลังโหลดระบบ...</h2>
-
+  <h2 class="text-xl font-semibold mt-4">กำลังโหลดระบบ...</h2>
   <script>
-    window.addEventListener('load',()=>{
-      setTimeout(()=>{window.location.href='welcome.html'},1500);
+    window.addEventListener('load', () => {
+      setTimeout(() => { window.location.href = "welcome.html"; }, 1500);
     });
   </script>
 </body>
