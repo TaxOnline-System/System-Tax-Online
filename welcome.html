@@ -11,17 +11,33 @@
     background-size: 400% 400%; 
     animation: gradientBG 15s ease infinite; 
   }
-  @keyframes gradientBG { 0% { background-position:0% 50% } 50% { background-position:100% 50% } 100% { background-position:0% 50% } }
+  @keyframes gradientBG { 
+    0% { background-position:0% 50% } 
+    50% { background-position:100% 50% } 
+    100% { background-position:0% 50% } 
+  }
+  .fade-in { animation: fadeIn 1s ease-in; }
+  @keyframes fadeIn { 0% {opacity:0; transform:translateY(20px);} 100% {opacity:1; transform:translateY(0);} }
 </style>
 </head>
-<body class="font-sans text-center">
+<body class="font-sans text-center fade-in">
+
+  <!-- Welcome Section -->
   <section class="py-32">
     <h1 class="text-4xl font-bold text-pink-600 mb-6">ยินดีต้อนรับสู่ TaxOnline</h1>
     <p class="text-gray-700 mb-8">คำนวณภาษี พ่อค้าแม่ค้าออนไลน์ง่าย ๆ ภายใน 1 นาที</p>
     <div class="space-x-4">
       <a href="login.html" class="px-6 py-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 transition">เข้าสู่ระบบ / สมัครสมาชิก</a>
-      <a href="welcome.html" class="px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition">หน้าแรก</a>
+      <a href="index.html" class="px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition">หน้าแรก</a>
     </div>
   </section>
+
+  <!-- Auto-show welcome on refresh -->
+  <script>
+    // บังคับให้หน้า Welcome แสดงทุกครั้งเมื่อโหลด
+    window.onload = function() {
+      console.log("หน้า Welcome โหลดแล้ว");
+    };
+  </script>
 </body>
 </html>
