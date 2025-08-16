@@ -3,25 +3,46 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TaxOnline - ระบบคำนวณภาษีแม่ค้าออนไลน์</title>
+<title>TaxOnline - ระบบคำนวณภาษีแม่ค้าออนไลน์ (ไฟล์เดียว)</title>
 
 <!-- TailwindCSS -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Firebase v8 -->
+<!-- Firebase v8 (คงเวอร์ชันเดิมของคุณ) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
 <style>
-  body {background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd); background-size: 400% 400%; animation: gradientBG 15s ease infinite;}
-  @keyframes gradientBG {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-  .fade-in { animation: fadeIn 0.7s ease-in;}
-  @keyframes fadeIn {0%{opacity:0; transform:translateY(10px);} 100%{opacity:1; transform:translateY(0);}}
-  #splash {position: fixed; inset:0; background:#fff; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:1; transition:opacity 0.8s ease;}
-  .splash-spinner {width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%; animation: spin 1.4s linear infinite;}
-  @keyframes spin {0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+  /* พื้นหลังไล่สี + แอนิเมชัน */
+  body {
+    background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+  }
+  @keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .fade-in { animation: fadeIn 0.7s ease-in; }
+  @keyframes fadeIn { 0%{opacity:0; transform:translateY(10px);} 100%{opacity:1; transform:translateY(0);} }
+
+  /* Splash */
+  #splash {
+    position: fixed; inset: 0; background:#fff; z-index:9999;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    opacity:1; transition: opacity 0.8s ease;
+  }
+  .splash-spinner {
+    width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;
+    animation: spin 1.4s linear infinite;
+  }
+  @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+  /* ปุ่มลิงก์ใน header บนอุปกรณ์เล็ก */
+  .nav-link { display:inline-block; margin:0.25rem 0.4rem; }
 </style>
 </head>
 <body class="font-sans">
@@ -32,7 +53,7 @@
   <h2 class="text-xl font-semibold text-pink-600 mt-4">กำลังโหลดระบบ...</h2>
 </div>
 
-<!-- Header -->
+<!-- Header (คงอยู่ทุกหน้า) -->
 <header class="bg-white dark:bg-gray-900 shadow p-4 fixed w-full z-30 top-0">
   <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
     <div class="flex items-center gap-3 mb-2 sm:mb-0">
@@ -50,81 +71,197 @@
   </div>
 </header>
 
-<!-- DateTime + Dark Mode -->
+<!-- แถบเวลา + Dark Mode -->
 <div class="fixed top-20 sm:top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
   <span id="datetime">--:--</span>
 </div>
 <div class="fixed top-20 sm:top-4 right-4 z-50">
-  <button id="darkToggle" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded shadow text-sm font-medium">🌙 Toggle Dark Mode</button>
+  <button id="darkToggle" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded shadow text-sm font-medium">
+    🌙 Toggle Dark Mode
+  </button>
 </div>
 
-<!-- Main Content -->
-<div class="pt-28 pb-16 max-w-4xl mx-auto">
+<!-- Main Content Wrapper (เผื่อให้ header fixed ไม่ทับเนื้อหา) -->
+<div class="pt-28 pb-16">
 
   <!-- Welcome -->
   <section id="welcomeSection" class="fade-in text-center px-6">
-    <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 dark:text-yellow-300 mb-4">คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!</h2>
+    <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 dark:text-yellow-300 mb-4">
+      คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!
+    </h2>
     <p class="text-gray-700 dark:text-gray-300 text-base sm:text-lg max-w-2xl mx-auto">
       เว็บไซต์ช่วยคำนวณภาษีสำหรับพ่อค้าแม่ค้าออนไลน์ พร้อมระบบบันทึกประวัติย้อนหลัง สมัครฟรี ใช้งานง่าย ถูกต้องตามกฎหมาย
     </p>
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
-      <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มคำนวณเลย</button>
-      <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
+      <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">
+        เริ่มคำนวณเลย
+      </button>
+      <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">
+        เข้าสู่ระบบ / สมัครสมาชิก
+      </button>
     </div>
   </section>
 
-  <!-- Auth Section -->
+  <!-- Auth -->
   <section id="authSection" class="hidden fade-in px-4">
-    <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-6 rounded shadow">
-      <h3 class="text-xl font-semibold mb-4 text-center text-gray-700 dark:text-gray-200">เข้าสู่ระบบ / สมัครสมาชิก</h3>
-      <form id="authForm" class="space-y-4">
-        <input type="email" id="email" placeholder="อีเมล" class="w-full p-2 border rounded" required>
-        <input type="password" id="password" placeholder="รหัสผ่าน" class="w-full p-2 border rounded" required>
-        <div class="flex gap-3">
-          <button type="submit" id="loginBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded">Login</button>
-          <button type="button" id="signupBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white p-2 rounded">Signup</button>
-        </div>
+    <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-2xl dark:bg-gray-900">
+      <h2 class="text-2xl font-bold text-center text-pink-600 mb-6">เข้าสู่ระบบ / สมัครสมาชิก</h2>
+
+      <div class="flex justify-center space-x-4 mb-6">
+        <button id="loginTab" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition">เข้าสู่ระบบ</button>
+        <button id="signupTab" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full transition">สมัครสมาชิก</button>
+      </div>
+
+      <!-- Login form -->
+      <form id="loginForm" class="space-y-4 hidden">
+        <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+        <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+        <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition" type="submit">เข้าสู่ระบบ</button>
       </form>
-      <button id="googleSignIn" class="w-full mt-4 bg-red-500 hover:bg-red-600 text-white p-2 rounded">Login with Google</button>
+
+      <!-- Signup form -->
+      <form id="signupForm" class="space-y-4 hidden">
+        <div class="grid grid-cols-2 gap-3">
+          <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
+          <input type="text" id="signupLastName" placeholder="นามสกุล" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
+        </div>
+        <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
+        <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
+        <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition" type="submit">สมัครสมาชิก</button>
+      </form>
+
+      <div class="mt-6 border-t pt-4">
+        <button id="googleSignInBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition">
+          เข้าสู่ระบบด้วย Google
+        </button>
+      </div>
+
+      <p id="authMessage" class="text-red-500 text-center mt-4 text-sm"></p>
     </div>
   </section>
 
-  <!-- Calculator Section -->
-  <section id="calculatorSection" class="hidden fade-in px-4">
-    <h2 class="text-2xl font-bold mb-4 text-gray-700 dark:text-gray-200">คำนวณภาษี</h2>
-    <form id="taxForm" class="space-y-3 bg-white dark:bg-gray-800 p-4 rounded shadow">
-      <input type="number" id="income" placeholder="รายได้ต่อปี (บาท)" class="w-full p-2 border rounded" required>
-      <button type="submit" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded">คำนวณ</button>
-    </form>
-    <div id="taxResult" class="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200"></div>
-  </section>
-
-  <!-- History Section -->
-  <section id="historySection" class="hidden fade-in px-4">
-    <h2 class="text-2xl font-bold mb-4 text-gray-700 dark:text-gray-200">ประวัติการคำนวณ</h2>
-    <ul id="historyList" class="space-y-2"></ul>
-  </section>
-
-  <!-- Profile Section -->
+  <!-- Profile -->
   <section id="profileSection" class="hidden fade-in px-4">
-    <h2 class="text-2xl font-bold mb-4 text-gray-700 dark:text-gray-200">โปรไฟล์ของฉัน</h2>
-    <div id="profileInfo" class="bg-white dark:bg-gray-800 p-4 rounded shadow space-y-2"></div>
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-xl dark:bg-gray-900">
+      <h3 class="text-2xl font-semibold text-pink-600 mb-4">โปรไฟล์ผู้ใช้งาน</h3>
+      <form id="profileForm" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-gray-700 dark:text-gray-300">ชื่อ</label>
+            <input id="profileFirstName" type="text" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"/>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-700 dark:text-gray-300">นามสกุล</label>
+            <input id="profileLastName" type="text" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-gray-700 dark:text-gray-300">อีเมล</label>
+            <input id="profileEmail" type="email" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white" disabled/>
+          </div>
+          <div>
+            <label class="block text-sm text-gray-700 dark:text-gray-300">เบอร์โทร</label>
+            <input id="profilePhone" type="text" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-700 dark:text-gray-300">ที่อยู่</label>
+          <textarea id="profileAddress" rows="3" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold">บันทึกโปรไฟล์</button>
+          <button type="button" id="reloadProfile" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg">โหลดข้อมูล</button>
+        </div>
+        <p id="profileMsg" class="text-sm mt-2"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Calculator -->
+  <section id="calculatorSection" class="hidden fade-in px-4">
+    <div class="max-w-md mx-auto bg-white dark:bg-gray-900 p-6 sm:p-8 rounded-2xl shadow-xl">
+      <h3 class="text-xl sm:text-2xl font-semibold text-center text-blue-600 dark:text-purple-300 mb-4">ฟอร์มคำนวณภาษี</h3>
+      <form class="space-y-4" id="taxForm">
+        <div>
+          <label class="block text-sm font-medium text-gray-800 dark:text-gray-200">รายได้ทั้งหมด (บาท)</label>
+          <input type="number" id="income" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-800 dark:text-gray-200">รายจ่ายทั้งหมด (บาท)</label>
+          <input type="number" id="expense" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-800 dark:text-gray-200">ค่าลดหย่อน (บาท)</label>
+          <input type="number" id="deduction" value="60000" class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:text-white"/>
+        </div>
+        <div class="mb-4">
+          <label for="receiptUpload" class="block text-sm font-medium text-gray-800 dark:text-gray-200">อัปโหลดใบเสร็จ (ไม่บังคับ)</label>
+          <input type="file" id="receiptUpload" accept="image/*,.pdf" multiple
+            class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-white dark:hover:file:bg-gray-600">
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">รองรับ JPG, PNG, PDF (อัปโหลดหลายไฟล์)</p>
+          <div id="fileInfo" class="mt-2 text-sm text-gray-700 dark:text-gray-300"></div>
+          <div id="previewArea" class="mt-2 grid grid-cols-3 gap-2"></div>
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition">คำนวณภาษี</button>
+      </form>
+      <div class="mt-6"><canvas id="taxPieChart"></canvas></div>
+      <p id="calcMsg" class="text-sm mt-3"></p>
+    </div>
+  </section>
+
+  <!-- History -->
+  <section id="historySection" class="hidden fade-in px-4">
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl dark:bg-gray-900">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-2xl font-semibold text-pink-600">ประวัติการคำนวณ</h3>
+        <button id="refreshHistory" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
+      </div>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left bg-gray-50 dark:bg-gray-800">
+              <th class="px-3 py-2">วันที่</th>
+              <th class="px-3 py-2">รายได้</th>
+              <th class="px-3 py-2">รายจ่าย</th>
+              <th class="px-3 py-2">ลดหย่อน</th>
+              <th class="px-3 py-2">ภาษี</th>
+              <th class="px-3 py-2">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+      <p id="historyMsg" class="text-sm mt-3"></p>
+    </div>
   </section>
 
 </div>
 
+<!-- Footer -->
 <footer class="bg-white dark:bg-gray-900 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
   &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์ · สงวนลิขสิทธิ์
 </footer>
 
 <script>
-  // ================= Firebase Init =================
-  const firebaseConfig = {apiKey:"AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",authDomain:"tax-online-6afdd.firebaseapp.com",projectId:"tax-online-6afdd",storageBucket:"tax-online-6afdd.appspot.com",messagingSenderId:"959276043439",appId:"1:959276043439:web:f358ce055687efea"};
+  /* =========================
+     Firebase Config & Init
+     ========================= */
+  const firebaseConfig = {
+    apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
+    authDomain: "tax-online-6afdd.firebaseapp.com",
+    projectId: "tax-online-6afdd",
+    storageBucket: "tax-online-6afdd.appspot.com",
+    messagingSenderId: "959276043439",
+    appId: "1:959276043439:web:f358ce055687efea5d185a"
+  };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const auth = firebase.auth();
 
-  // ================= Sections =================
+  /* =========================
+     DOM Selectors
+     ========================= */
   const sections = {
     welcome: document.getElementById('welcomeSection'),
     auth: document.getElementById('authSection'),
@@ -135,30 +272,377 @@
   const userGreeting = document.getElementById('userGreeting');
   const loginNav = document.getElementById('loginNav');
   const logoutBtn = document.getElementById('logoutBtn');
+  const historyBody = document.getElementById('historyBody');
+  const historyMsg = document.getElementById('historyMsg');
+  const profileMsg = document.getElementById('profileMsg');
+  const calcMsg = document.getElementById('calcMsg');
 
-  function showOnly(key){ Object.keys(sections).forEach(k=>sections[k].classList.toggle('hidden', k!==key)); window.scrollTo({top:0,behavior:'smooth'}); }
+  /* =========================
+     UI Helpers
+     ========================= */
+  function showOnly(sectionKey) {
+    // แสดง Welcome เสมอเมื่อรีเฟรช: ตรงนี้เราไม่เก็บ lastSection
+    Object.keys(sections).forEach(k => {
+      sections[k].classList.toggle('hidden', k !== sectionKey);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-  document.querySelectorAll('[data-nav]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
+  // นำปุ่มที่มี data-nav ไปเชื่อมกับ showOnly
+  document.querySelectorAll('[data-nav]').forEach(btn => {
+    btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-nav');
-      if(['calculator','history','profile'].includes(target) && !auth.currentUser){ alert('กรุณาเข้าสู่ระบบก่อนใช้งานส่วนนี้'); showOnly('auth'); return; }
+      if (target === 'calculator' || target === 'history' || target === 'profile') {
+        if (!auth.currentUser) {
+          alert('กรุณาเข้าสู่ระบบก่อนใช้งานส่วนนี้');
+          showOnly('auth');
+          return;
+        }
+      }
+      if (target === 'history') loadHistory();
+      if (target === 'profile') loadProfile();
       showOnly(target);
     });
   });
 
-  // Dark Mode
-  document.getElementById('darkToggle').addEventListener('click',()=>{
+  // Dark mode
+  document.getElementById('darkToggle').addEventListener('click', () => {
     document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', document.documentElement.classList.contains('dark')?'dark':'light');
+    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
   });
-  if(localStorage.getItem('theme')==='dark') document.documentElement.classList.add('dark');
+  (function () {
+    if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
+  })();
 
   // DateTime
-  function updateDateTime(){ const now=new Date(); const opts={weekday:'long',year:'numeric',month:'long',day:'numeric'}; const el=document.getElementById('datetime'); if(el) el.innerText=`${now.toLocaleDateString('th-TH',opts)} ${now.toLocaleTimeString('th-TH')}`; }
-  setInterval(updateDateTime,1000); updateDateTime();
+  function updateDateTime() {
+    const now = new Date();
+    const options = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+    const timeStr = now.toLocaleTimeString('th-TH');
+    const dateStr = now.toLocaleDateString('th-TH', options);
+    const el = document.getElementById('datetime');
+    if (el) el.innerText = `${dateStr} ${timeStr}`;
+  }
+  setInterval(updateDateTime, 1000); updateDateTime();
 
-  // Splash
-  window.addEventListener('load',()=>{ setTimeout(()=>{const s=document.getElementById('splash'); s.style.opacity='0'; setTimeout(()=>s.style.display='none',800);},1200); showOnly('welcome'); });
+  // Splash hide (เสมอหลังโหลด)
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const s = document.getElementById('splash');
+      s.style.opacity = '0';
+      setTimeout(() => s.style.display = 'none', 800);
+    }, 1200);
+    // รีเฟรชแล้วขึ้น Welcome เสมอ
+    showOnly('welcome');
+  });
+
+  /* =========================
+     Auth (Login / Signup / Google)
+     ========================= */
+  const loginTab = document.getElementById('loginTab');
+  const signupTab = document.getElementById('signupTab');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  const authMessage = document.getElementById('authMessage');
+
+  loginTab.addEventListener('click', () => {
+    loginForm.classList.remove('hidden'); signupForm.classList.add('hidden'); authMessage.textContent = '';
+  });
+  signupTab.addEventListener('click', () => {
+    signupForm.classList.remove('hidden'); loginForm.classList.add('hidden'); authMessage.textContent = '';
+  });
+  // default เปิด login ฟอร์ม
+  loginTab.click();
+
+  // Email/Password Login
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    auth.signInWithEmailAndPassword(email, password)
+      .then(() => { showOnly('calculator'); })
+      .catch(err => authMessage.textContent = err.message);
+  });
+
+  // Signup + สร้างโปรไฟล์เบื้องต้น
+  signupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const firstName = document.getElementById('signupFirstName').value.trim();
+    const lastName = document.getElementById('signupLastName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    if (!firstName || !lastName || !email || !password) {
+      authMessage.textContent = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
+      return;
+    }
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(cred => {
+        const user = cred.user;
+        return user.updateProfile({ displayName: `${firstName} ${lastName}` })
+          .then(() => db.collection('users').doc(user.uid).set({
+            uid: user.uid,
+            firstName, lastName, email,
+            phone: '', address: '',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }));
+      })
+      .then(() => { showOnly('profile'); loadProfile(); })
+      .catch(err => authMessage.textContent = err.message);
+  });
+
+  // Google Sign-in
+  document.getElementById('googleSignInBtn').addEventListener('click', () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then(async (res) => {
+        const user = res.user;
+        // ถ้าไม่มีเอกสารโปรไฟล์ ให้สร้างเบื้องต้น
+        const docRef = db.collection('users').doc(user.uid);
+        const snap = await docRef.get();
+        if (!snap.exists) {
+          const [firstName, ...rest] = (user.displayName || '').split(' ');
+          await docRef.set({
+            uid: user.uid,
+            firstName: firstName || '',
+            lastName: (rest || []).join(' ') || '',
+            email: user.email || '',
+            phone: '', address: '',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+        showOnly('calculator');
+      })
+      .catch(err => authMessage.textContent = err.message);
+  });
+
+  // ออกจากระบบ
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  // เฝ้าสถานะผู้ใช้
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      userGreeting.classList.remove('hidden');
+      userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`;
+      loginNav.classList.add('hidden');
+      logoutBtn.classList.remove('hidden');
+    } else {
+      userGreeting.classList.add('hidden');
+      loginNav.classList.remove('hidden');
+      logoutBtn.classList.add('hidden');
+      // ผู้ใช้ไม่ได้ล็อกอิน แต่เรายังโชว์ Welcome เสมอ (ตามสเปค)
+      showOnly('welcome');
+    }
+  });
+
+  /* =========================
+     Profile (Load / Save)
+     ========================= */
+  const profileForm = document.getElementById('profileForm');
+  const profileFirstName = document.getElementById('profileFirstName');
+  const profileLastName = document.getElementById('profileLastName');
+  const profileEmail = document.getElementById('profileEmail');
+  const profilePhone = document.getElementById('profilePhone');
+  const profileAddress = document.getElementById('profileAddress');
+  document.getElementById('reloadProfile').addEventListener('click', loadProfile);
+
+  async function loadProfile() {
+    profileMsg.textContent = '';
+    const user = auth.currentUser;
+    if (!user) { profileMsg.textContent = 'กรุณาเข้าสู่ระบบ'; return; }
+    try {
+      const snap = await db.collection('users').doc(user.uid).get();
+      if (snap.exists) {
+        const data = snap.data();
+        profileFirstName.value = data.firstName || '';
+        profileLastName.value = data.lastName || '';
+        profileEmail.value = data.email || user.email || '';
+        profilePhone.value = data.phone || '';
+        profileAddress.value = data.address || '';
+        profileMsg.textContent = 'โหลดข้อมูลสำเร็จ';
+        profileMsg.className = 'text-green-600 text-sm mt-2';
+      } else {
+        // ถ้าไม่มี profile ให้ใส่ข้อมูลพื้นฐาน
+        profileFirstName.value = user.displayName ? user.displayName.split(' ')[0] : '';
+        profileLastName.value = user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '';
+        profileEmail.value = user.email || '';
+        profileMsg.textContent = 'ยังไม่มีข้อมูลโปรไฟล์ กรอกแล้วกดบันทึกได้เลย';
+        profileMsg.className = 'text-yellow-600 text-sm mt-2';
+      }
+    } catch (e) {
+      profileMsg.textContent = e.message;
+      profileMsg.className = 'text-red-600 text-sm mt-2';
+    }
+  }
+
+  profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    if (!user) { alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
+    try {
+      await db.collection('users').doc(user.uid).set({
+        uid: user.uid,
+        firstName: profileFirstName.value.trim(),
+        lastName: profileLastName.value.trim(),
+        email: profileEmail.value.trim() || user.email,
+        phone: profilePhone.value.trim(),
+        address: profileAddress.value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      // อัปเดตชื่อใน Auth
+      const displayName = `${profileFirstName.value.trim()} ${profileLastName.value.trim()}`.trim();
+      await user.updateProfile({ displayName });
+      userGreeting.textContent = `สวัสดี, ${displayName || user.email}`;
+
+      profileMsg.textContent = 'บันทึกโปรไฟล์สำเร็จ';
+      profileMsg.className = 'text-green-600 text-sm mt-2';
+    } catch (e) {
+      profileMsg.textContent = e.message;
+      profileMsg.className = 'text-red-600 text-sm mt-2';
+    }
+  });
+
+  /* =========================
+     Upload Preview (Client-side only)
+     ========================= */
+  document.getElementById('receiptUpload').addEventListener('change', function(){
+    const files = this.files;
+    const fileInfo = document.getElementById('fileInfo');
+    const previewArea = document.getElementById('previewArea');
+    fileInfo.innerText = `คุณเลือก ${files.length} ไฟล์`;
+    previewArea.innerHTML = '';
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = file.name;
+          img.className = 'w-full h-24 object-cover rounded shadow';
+          previewArea.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const p = document.createElement('p');
+        p.textContent = `📄 ${file.name}`;
+        p.className = 'text-xs text-gray-700 dark:text-gray-300';
+        previewArea.appendChild(p);
+      }
+    });
+  });
+
+  /* =========================
+     Tax Calculator + Save History
+     ========================= */
+  function calculateTax(income, expense, deduction) {
+    const net = income - expense - deduction;
+    return net <= 150000 ? 0 : net * 0.05; // ตัวอย่างขั้นเดียว
+  }
+
+  document.getElementById('taxForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const income = parseFloat(document.getElementById('income').value);
+    const expense = parseFloat(document.getElementById('expense').value);
+    const deduction = parseFloat(document.getElementById('deduction').value);
+    if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
+      alert('กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข'); return;
+    }
+    const tax = calculateTax(income, expense, deduction);
+
+    // วาดกราฟ
+    const ctx = document.getElementById('taxPieChart').getContext('2d');
+    if (window.taxChart instanceof Chart) window.taxChart.destroy();
+    const needTax = (income - expense - deduction) > 150000 ? 100 : 0;
+    window.taxChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['เสียภาษี', 'ไม่ต้องเสียภาษี'],
+        datasets: [{ data: [needTax, 100 - needTax], backgroundColor: ['#ef4444','#22c55e'], hoverOffset: 4 }]
+      },
+      options: { responsive: true, plugins: { legend: { position:'top' }, title: { display:true, text:`ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท` } } }
+    });
+
+    calcMsg.textContent = '';
+
+    // บันทึกประวัติ (ถ้าล็อกอิน)
+    const user = auth.currentUser;
+    if (!user) {
+      calcMsg.textContent = 'คำแนะนำ: เข้าสู่ระบบเพื่อบันทึกประวัติการคำนวณ';
+      calcMsg.className = 'text-yellow-600 text-sm mt-3';
+      return;
+    }
+    try {
+      await db.collection('users').doc(user.uid).collection('calculations').add({
+        income, expense, deduction, tax,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      calcMsg.textContent = 'บันทึกประวัติการคำนวณแล้ว';
+      calcMsg.className = 'text-green-600 text-sm mt-3';
+    } catch (e) {
+      calcMsg.textContent = e.message;
+      calcMsg.className = 'text-red-600 text-sm mt-3';
+    }
+  });
+
+  /* =========================
+     History (Load / Delete)
+     ========================= */
+  async function loadHistory() {
+    historyMsg.textContent = '';
+    historyBody.innerHTML = '';
+    const user = auth.currentUser;
+    if (!user) { historyMsg.textContent = 'กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
+
+    try {
+      const snap = await db.collection('users').doc(user.uid)
+        .collection('calculations')
+        .orderBy('createdAt','desc')
+        .limit(50)
+        .get();
+
+      if (snap.empty) {
+        historyBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีประวัติการคำนวณ</td></tr>`;
+        return;
+      }
+      snap.forEach(doc => {
+        const d = doc.data();
+        const dt = d.createdAt ? d.createdAt.toDate() : new Date();
+        const tr = document.createElement('tr');
+        tr.className = 'border-b dark:border-gray-700';
+        tr.innerHTML = `
+          <td class="px-3 py-2 whitespace-nowrap">${dt.toLocaleString('th-TH')}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${(d.income || 0).toLocaleString('th-TH')}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${(d.expense || 0).toLocaleString('th-TH')}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${(d.deduction || 0).toLocaleString('th-TH')}</td>
+          <td class="px-3 py-2 whitespace-nowrap font-semibold">${(d.tax || 0).toLocaleString('th-TH')}</td>
+          <td class="px-3 py-2">
+            <button data-del="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button>
+          </td>
+        `;
+        historyBody.appendChild(tr);
+      });
+
+      // ปุ่มลบ
+      historyBody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('ยืนยันการลบรายการนี้?')) return;
+          try {
+            await db.collection('users').doc(user.uid).collection('calculations').doc(btn.getAttribute('data-del')).delete();
+            loadHistory();
+          } catch (e) {
+            alert(e.message);
+          }
+        });
+      });
+    } catch (e) {
+      historyMsg.textContent = e.message;
+      historyMsg.className = 'text-red-600';
+    }
+  }
+  document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+
 </script>
 </body>
 </html>
