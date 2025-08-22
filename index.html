@@ -9,10 +9,8 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- jsPDF + AutoTable (สร้าง PDF ตาราง) -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.3/dist/jspdf.plugin.autotable.min.js"></script>
+<!-- html2pdf.js (HTML -> PDF รองรับไทย) -->
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 
 <!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -43,6 +41,18 @@
   }
   @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
   .nav-link { display:inline-block; margin:0.25rem 0.4rem; }
+  /* สไตล์ของรายงาน PDF (ใช้ร่วมกับ html2pdf) */
+  #pdfReport {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", "Noto Sans", "TH Sarabun New", "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+    color: #111827; /* gray-900 */
+  }
+  #pdfReport h1 { font-size: 18pt; margin: 0 0 6pt 0; }
+  #pdfReport h2 { font-size: 13pt; margin: 14pt 0 6pt 0; }
+  #pdfReport .meta { font-size: 10pt; line-height: 1.4; }
+  #pdfReport table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+  #pdfReport th, #pdfReport td { border: 1px solid #e5e7eb; padding: 6pt 8pt; }
+  #pdfReport th { background: #eff6ff; text-align: left; } /* blue-50 */
+  #pdfReport .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt; font-size: 11pt; }
 </style>
 </head>
 <body class="font-sans">
@@ -251,6 +261,11 @@
     </div>
   </section>
 
+  <!-- บล็อก HTML สำหรับสร้าง PDF (ซ่อนไว้) -->
+  <section id="pdfReport" class="hidden bg-white p-6">
+    <!-- เนื้อหาในนี้จะถูกเติมด้วยสคริปต์ก่อนแปลงเป็น PDF -->
+  </section>
+
 </div>
 
 <footer class="bg-white dark:bg-gray-900 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -356,8 +371,7 @@
   loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value.trim();
-    thePassword = document.getElementById('loginPassword').value; // keep variable name typo-safe
-    const password = thePassword;
+    const password = document.getElementById('loginPassword').value;
     auth.signInWithEmailAndPassword(email, password)
       .then(() => { showOnly('calculator'); })
       .catch(err => { authMessage.textContent = err.message; console.error(err); });
@@ -708,52 +722,92 @@
     URL.revokeObjectURL(a.href);
   }
 
+  // ===== PDF ด้วย html2pdf (รองรับไทย ไม่ต้องฝังฟอนต์) =====
   function exportHistoryPDF() {
     if (!_lastHistoryRows.length) { alert('ยังไม่มีข้อมูลให้ส่งออก (กรุณากดรีเฟรชก่อน)'); return; }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
     const u = auth.currentUser;
-    const displayName = u?.displayName || '';
-    const email = u?.email || '';
-    const todayTH = new Date().toLocaleString('th-TH');
+    const displayName = u?.displayName || '-';
+    const email = u?.email || '-';
+    const printedAt = new Date().toLocaleString('th-TH');
 
     const sum = _lastHistoryRows.reduce((acc, r) => {
       acc.income += r.income; acc.expense += r.expense; acc.deduction += r.deduction; acc.tax += r.tax; return acc;
     }, {income:0, expense:0, deduction:0, tax:0});
 
-    doc.setFontSize(16);
-    doc.text('รายงานประวัติการคำนวณภาษี (TaxOnline)', 40, 50);
-    doc.setFontSize(11);
-    doc.text(`ผู้ออกรายงาน: ${displayName || '-'}`, 40, 72);
-    doc.text(`อีเมล: ${email || '-'}`, 40, 88);
-    doc.text(`วันที่พิมพ์: ${todayTH}`, 40, 104);
-
-    const sY = 120;
-    doc.setFontSize(12); doc.text('สรุปยอด', 40, sY);
-    doc.setFontSize(11);
-    doc.text(`รายได้รวม: ${fmtTH(sum.income)} บาท`, 40, sY+18);
-    doc.text(`รายจ่ายรวม: ${fmtTH(sum.expense)} บาท`, 40, sY+34);
-    doc.text(`ลดหย่อนรวม: ${fmtTH(sum.deduction)} บาท`, 260, sY+18);
-    doc.text(`ภาษีรวม: ${fmtTH(sum.tax)} บาท`, 260, sY+34);
-
-    const tableBody = _lastHistoryRows
+    // เตรียม HTML สำหรับรายงาน
+    const bodyRows = _lastHistoryRows
       .slice().sort((a,b)=> a.date - b.date)
-      .map(r => [r.date.toLocaleString('th-TH'), fmtTH(r.income), fmtTH(r.expense), fmtTH(r.deduction), fmtTH(r.tax)]);
+      .map(r => `
+        <tr>
+          <td>${r.date.toLocaleString('th-TH')}</td>
+          <td style="text-align:right">${fmtTH(r.income)}</td>
+          <td style="text-align:right">${fmtTH(r.expense)}</td>
+          <td style="text-align:right">${fmtTH(r.deduction)}</td>
+          <td style="text-align:right">${fmtTH(r.tax)}</td>
+        </tr>
+      `).join('');
 
-    doc.autoTable({
-      startY: sY + 54,
-      head: [['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี']],
-      body: tableBody,
-      headStyles: { fillColor: [59,130,246] },
-      theme: 'grid',
-      margin: { left: 40, right: 40 }
+    const report = document.getElementById('pdfReport');
+    report.innerHTML = `
+      <div>
+        <h1>รายงานประวัติการคำนวณภาษี (TaxOnline)</h1>
+        <div class="meta">
+          ผู้ออกรายงาน: ${escapeHtml(displayName)}<br/>
+          อีเมล: ${escapeHtml(email)}<br/>
+          วันที่พิมพ์: ${escapeHtml(printedAt)}
+        </div>
+
+        <h2>สรุปยอด</h2>
+        <div class="summary">
+          <div>รายได้รวม: <strong>${fmtTH(sum.income)}</strong> บาท</div>
+          <div>รายจ่ายรวม: <strong>${fmtTH(sum.expense)}</strong> บาท</div>
+          <div>ลดหย่อนรวม: <strong>${fmtTH(sum.deduction)}</strong> บาท</div>
+          <div>ภาษีรวม: <strong>${fmtTH(sum.tax)}</strong> บาท</div>
+        </div>
+
+        <h2>รายละเอียดรายการ</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th style="text-align:right">รายได้</th>
+              <th style="text-align:right">รายจ่าย</th>
+              <th style="text-align:right">ลดหย่อน</th>
+              <th style="text-align:right">ภาษี</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bodyRows}
+          </tbody>
+        </table>
+      </div>
+    `;
+    report.classList.remove('hidden');
+
+    // ตั้งค่า PDF
+    const opt = {
+      margin:       [10, 12, 10, 12], // top,right,bottom,left (mm-ish in pt scale)
+      filename:     `TaxOnline_History_${toYMD(new Date()).replace(/-/g,'')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'pt', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().from(report).set(opt).save().then(() => {
+      report.classList.add('hidden'); // ซ่อนกลับ
+      report.innerHTML = '';
     });
-
-    const today = toYMD(new Date()).replace(/-/g,'');
-    doc.save(`TaxOnline_History_${today}.pdf`);
   }
 
+  // ป้องกัน XSS ในช่องชื่อ/อีเมล
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, s => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[s]));
+  }
+
+  document.getElementById('refreshHistory').addEventListener('click', loadHistory);
   document.getElementById('exportCsvBtn').addEventListener('click', exportHistoryCSV);
   document.getElementById('exportPdfBtn').addEventListener('click', exportHistoryPDF);
 </script>
