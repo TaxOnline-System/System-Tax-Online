@@ -16,6 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
 
 <style>
   body {
@@ -41,17 +42,18 @@
   }
   @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
   .nav-link { display:inline-block; margin:0.25rem 0.4rem; }
+
   /* สไตล์ของรายงาน PDF (ใช้ร่วมกับ html2pdf) */
   #pdfReport {
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", "Noto Sans", "TH Sarabun New", "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-    color: #111827; /* gray-900 */
+    color: #111827;
   }
   #pdfReport h1 { font-size: 18pt; margin: 0 0 6pt 0; }
   #pdfReport h2 { font-size: 13pt; margin: 14pt 0 6pt 0; }
   #pdfReport .meta { font-size: 10pt; line-height: 1.4; }
   #pdfReport table { width: 100%; border-collapse: collapse; font-size: 10pt; }
   #pdfReport th, #pdfReport td { border: 1px solid #e5e7eb; padding: 6pt 8pt; }
-  #pdfReport th { background: #eff6ff; text-align: left; } /* blue-50 */
+  #pdfReport th { background: #eff6ff; text-align: left; }
   #pdfReport .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 6pt; font-size: 11pt; }
 </style>
 </head>
@@ -261,10 +263,8 @@
     </div>
   </section>
 
-  <!-- บล็อก HTML สำหรับสร้าง PDF (ซ่อนไว้) -->
-  <section id="pdfReport" class="hidden bg-white p-6">
-    <!-- เนื้อหาในนี้จะถูกเติมด้วยสคริปต์ก่อนแปลงเป็น PDF -->
-  </section>
+  <!-- HTML สำหรับสร้าง PDF (ซ่อนไว้) -->
+  <section id="pdfReport" class="hidden bg-white p-6"></section>
 
 </div>
 
@@ -285,6 +285,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const auth = firebase.auth();
+  const storage = firebase.storage();
 
   /* ========== DOM ========== */
   const sections = {
@@ -533,7 +534,7 @@
     });
   });
 
-  /* ========== Tax Calculator + Save History ========== */
+  /* ========== Tax Calculator + Save + Upload Receipts ========== */
   function calculateTax(income, expense, deduction) {
     const net = income - expense - deduction;
     return net <= 150000 ? 0 : net * 0.05; // ตัวอย่างขั้นเดียว
@@ -544,6 +545,8 @@
     const income = Number(document.getElementById('income').value);
     const expense = Number(document.getElementById('expense').value);
     const deduction = Number(document.getElementById('deduction').value);
+    const fileInput = document.getElementById('receiptUpload');
+    const files = fileInput?.files || [];
 
     if (Number.isNaN(income) || Number.isNaN(expense) || Number.isNaN(deduction)) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข'); return;
@@ -566,35 +569,61 @@
 
     calcMsg.textContent = '';
 
-    // Save history
+    // ต้องล็อกอินก่อนถึงจะบันทึก/อัปโหลดได้
     const user = auth.currentUser;
     if (!user) {
-      calcMsg.textContent = 'ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึกประวัติ';
+      calcMsg.textContent = 'ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึกประวัติ / ไม่อัปโหลดไฟล์';
       calcMsg.className = 'text-yellow-600 text-sm mt-3';
       return;
     }
 
     try {
-      const payload = {
+      // 1) สร้างเอกสารคำนวณ (ยังไม่มี receipts)
+      const docRef = await db.collection('users').doc(user.uid).collection('calculations').add({
         income: income || 0,
         expense: expense || 0,
         deduction: deduction || 0,
         tax: tax || 0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection('users').doc(user.uid).collection('calculations').add(payload);
-      calcMsg.textContent = 'บันทึกประวัติการคำนวณแล้ว';
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        receipts: []
+      });
+
+      // 2) อัปโหลดไฟล์ทั้งหมด (ถ้ามี)
+      let uploaded = [];
+      if (files.length > 0) {
+        const storageRef = storage.ref();
+        const tasks = Array.from(files).map(async (file) => {
+          const safeName = `${Date.now()}_${file.name}`.replace(/[^\w.\-]/g, '_');
+          const path = `users/${user.uid}/calculations/${docRef.id}/${safeName}`;
+          const snap = await storageRef.child(path).put(file, {
+            contentType: file.type || 'application/octet-stream',
+            customMetadata: { originalName: file.name }
+          });
+          const url = await snap.ref.getDownloadURL();
+          return { name: file.name, size: file.size || null, type: file.type || null, url, path };
+        });
+        uploaded = await Promise.all(tasks);
+      }
+
+      // 3) อัปเดตเอกสารด้วยรายการไฟล์
+      if (uploaded.length) await docRef.update({ receipts: uploaded });
+
+      // 4) เคลียร์ไฟล์อินพุตและแจ้งผล
+      if (fileInput) fileInput.value = '';
+      calcMsg.textContent = uploaded.length
+        ? `บันทึกประวัติและอัปโหลดใบเสร็จแล้ว (${uploaded.length} ไฟล์)`
+        : 'บันทึกประวัติการคำนวณแล้ว';
       calcMsg.className = 'text-green-600 text-sm mt-3';
+
     } catch (e) {
-      console.error('Save calc failed:', e);
-      calcMsg.textContent = `บันทึกล้มเหลว: ${e.code || ''} ${e.message || ''}`;
+      console.error('Save calc/upload failed:', e);
+      calcMsg.textContent = `บันทึก/อัปโหลดล้มเหลว: ${e.code || ''} ${e.message || ''}`;
       calcMsg.className = 'text-red-600 text-sm mt-3';
     }
   });
 
   /* ========== History (Filter/Export/Delete) ========== */
-  let _lastHistoryRows = []; // cache สำหรับส่งออก [{id,date,income,expense,deduction,tax}]
-
+  let _lastHistoryRows = []; // cache สำหรับส่งออก [{id,date,income,expense,deduction,tax,receipts}]
   const fmtTH = (n) => (Number(n) || 0).toLocaleString('th-TH');
   const toYMD = (d) => {
     const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0');
@@ -643,9 +672,15 @@
           income: Number(d.income)||0,
           expense: Number(d.expense)||0,
           deduction: Number(d.deduction)||0,
-          tax: Number(d.tax)||0
+          tax: Number(d.tax)||0,
+          receipts: Array.isArray(d.receipts) ? d.receipts : []
         };
         _lastHistoryRows.push(row);
+
+        const nFiles = row.receipts.length;
+        const filesLinks = nFiles
+          ? row.receipts.map((r, i) => `<a href="${r.url}" target="_blank" class="text-blue-600 hover:underline">ไฟล์ ${i+1}</a>`).join(' · ')
+          : '<span class="text-gray-400">—</span>';
 
         const tr = document.createElement('tr');
         tr.className = 'border-b dark:border-gray-700';
@@ -655,8 +690,9 @@
           <td class="px-3 py-2 whitespace-nowrap">${fmtTH(row.expense)}</td>
           <td class="px-3 py-2 whitespace-nowrap">${fmtTH(row.deduction)}</td>
           <td class="px-3 py-2 whitespace-nowrap font-semibold">${fmtTH(row.tax)}</td>
-          <td class="px-3 py-2">
+          <td class="px-3 py-2 space-y-1">
             <button data-del="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button>
+            <div class="text-xs">${filesLinks}</div>
           </td>
         `;
         historyBody.appendChild(tr);
@@ -667,7 +703,11 @@
         btn.addEventListener('click', async () => {
           if (!confirm('ยืนยันการลบรายการนี้?')) return;
           try {
-            await db.collection('users').doc(user.uid).collection('calculations').doc(btn.getAttribute('data-del')).delete();
+            // ลบเอกสาร
+            const user = auth.currentUser;
+            const calcId = btn.getAttribute('data-del');
+            await db.collection('users').doc(user.uid).collection('calculations').doc(calcId).delete();
+            // หมายเหตุ: หากต้องการลบไฟล์ใน Storage ด้วย ต้องดึง path จาก receipts แล้วลบด้วย storage.ref(path).delete()
             loadHistory();
           } catch (e) {
             console.error(e);
@@ -684,6 +724,7 @@
   }
   document.getElementById('refreshHistory').addEventListener('click', loadHistory);
 
+  /* ====== Export: CSV & PDF ====== */
   function exportHistoryCSV() {
     if (!_lastHistoryRows.length) { alert('ยังไม่มีข้อมูลให้ส่งออก (กรุณากดรีเฟรชก่อน)'); return; }
 
@@ -695,13 +736,20 @@
     const displayName = u?.displayName || '';
     const email = u?.email || '';
 
-    const header = ['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี'];
+    const header = ['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี','ไฟล์แนบ'];
     const rows = _lastHistoryRows
       .slice().sort((a,b)=> a.date - b.date)
-      .map(r => [r.date.toLocaleString('th-TH'), r.income, r.expense, r.deduction, r.tax]);
+      .map(r => [
+        r.date.toLocaleString('th-TH'),
+        r.income,
+        r.expense,
+        r.deduction,
+        r.tax,
+        (r.receipts||[]).map(f=>f.url).join(' | ')
+      ]);
 
     rows.push([]);
-    rows.push(['รวม', sum.income, sum.expense, sum.deduction, sum.tax]);
+    rows.push(['รวม', sum.income, sum.expense, sum.deduction, sum.tax, '']);
     rows.push([]);
     rows.push(['ผู้ยื่น', displayName]);
     rows.push(['อีเมล', email]);
@@ -722,7 +770,6 @@
     URL.revokeObjectURL(a.href);
   }
 
-  // ===== PDF ด้วย html2pdf (รองรับไทย ไม่ต้องฝังฟอนต์) =====
   function exportHistoryPDF() {
     if (!_lastHistoryRows.length) { alert('ยังไม่มีข้อมูลให้ส่งออก (กรุณากดรีเฟรชก่อน)'); return; }
 
@@ -735,7 +782,6 @@
       acc.income += r.income; acc.expense += r.expense; acc.deduction += r.deduction; acc.tax += r.tax; return acc;
     }, {income:0, expense:0, deduction:0, tax:0});
 
-    // เตรียม HTML สำหรับรายงาน
     const bodyRows = _lastHistoryRows
       .slice().sort((a,b)=> a.date - b.date)
       .map(r => `
@@ -785,9 +831,8 @@
     `;
     report.classList.remove('hidden');
 
-    // ตั้งค่า PDF
     const opt = {
-      margin:       [10, 12, 10, 12], // top,right,bottom,left (mm-ish in pt scale)
+      margin:       [10, 12, 10, 12],
       filename:     `TaxOnline_History_${toYMD(new Date()).replace(/-/g,'')}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
@@ -795,19 +840,15 @@
     };
 
     html2pdf().from(report).set(opt).save().then(() => {
-      report.classList.add('hidden'); // ซ่อนกลับ
+      report.classList.add('hidden');
       report.innerHTML = '';
     });
   }
 
-  // ป้องกัน XSS ในช่องชื่อ/อีเมล
   function escapeHtml(str) {
-    return String(str ?? '').replace(/[&<>"']/g, s => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[s]));
+    return String(str ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   }
 
-  document.getElementById('refreshHistory').addEventListener('click', loadHistory);
   document.getElementById('exportCsvBtn').addEventListener('click', exportHistoryCSV);
   document.getElementById('exportPdfBtn').addEventListener('click', exportHistoryPDF);
 </script>
