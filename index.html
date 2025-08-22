@@ -9,13 +9,12 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Firebase v8 (คงเวอร์ชันเดิมของคุณ) -->
+<!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
 <style>
-  /* พื้นหลังไล่สี + แอนิเมชัน */
   body {
     background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #fbc2eb, #a1c4fd);
     background-size: 400% 400%;
@@ -28,8 +27,6 @@
   }
   .fade-in { animation: fadeIn 0.7s ease-in; }
   @keyframes fadeIn { 0%{opacity:0; transform:translateY(10px);} 100%{opacity:1; transform:translateY(0);} }
-
-  /* Splash */
   #splash {
     position: fixed; inset: 0; background:#fff; z-index:9999;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -40,8 +37,6 @@
     animation: spin 1.4s linear infinite;
   }
   @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-
-  /* ปุ่มลิงก์ใน header บนอุปกรณ์เล็ก */
   .nav-link { display:inline-block; margin:0.25rem 0.4rem; }
 </style>
 </head>
@@ -53,7 +48,7 @@
   <h2 class="text-xl font-semibold text-pink-600 mt-4">กำลังโหลดระบบ...</h2>
 </div>
 
-<!-- Header (คงอยู่ทุกหน้า) -->
+<!-- Header -->
 <header class="bg-white dark:bg-gray-900 shadow p-4 fixed w-full z-30 top-0">
   <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
     <div class="flex items-center gap-3 mb-2 sm:mb-0">
@@ -71,7 +66,7 @@
   </div>
 </header>
 
-<!-- แถบเวลา + Dark Mode -->
+<!-- Time + Dark -->
 <div class="fixed top-20 sm:top-4 left-4 z-50 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-white px-3 py-1 rounded shadow">
   <span id="datetime">--:--</span>
 </div>
@@ -81,7 +76,6 @@
   </button>
 </div>
 
-<!-- Main Content Wrapper (เผื่อให้ header fixed ไม่ทับเนื้อหา) -->
 <div class="pt-28 pb-16">
 
   <!-- Welcome -->
@@ -112,14 +106,14 @@
         <button id="signupTab" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full transition">สมัครสมาชิก</button>
       </div>
 
-      <!-- Login form -->
+      <!-- Login -->
       <form id="loginForm" class="space-y-4 hidden">
         <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
         <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
         <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition" type="submit">เข้าสู่ระบบ</button>
       </form>
 
-      <!-- Signup form -->
+      <!-- Signup -->
       <form id="signupForm" class="space-y-4 hidden">
         <div class="grid grid-cols-2 gap-3">
           <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
@@ -238,15 +232,12 @@
 
 </div>
 
-<!-- Footer -->
 <footer class="bg-white dark:bg-gray-900 p-4 text-center text-sm text-gray-500 dark:text-gray-400">
   &copy; 2025 ระบบคำนวณภาษี พ่อค้า แม่ค้าออนไลน์ · สงวนลิขสิทธิ์
 </footer>
 
 <script>
-  /* =========================
-     Firebase Config & Init
-     ========================= */
+  /* ========== Firebase Config & Init ========== */
   const firebaseConfig = {
     apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
     authDomain: "tax-online-6afdd.firebaseapp.com",
@@ -259,9 +250,7 @@
   const db = firebase.firestore();
   const auth = firebase.auth();
 
-  /* =========================
-     DOM Selectors
-     ========================= */
+  /* ========== DOM ========== */
   const sections = {
     welcome: document.getElementById('welcomeSection'),
     auth: document.getElementById('authSection'),
@@ -277,18 +266,14 @@
   const profileMsg = document.getElementById('profileMsg');
   const calcMsg = document.getElementById('calcMsg');
 
-  /* =========================
-     UI Helpers
-     ========================= */
+  /* ========== UI Helpers ========== */
   function showOnly(sectionKey) {
-    // แสดง Welcome เสมอเมื่อรีเฟรช: ตรงนี้เราไม่เก็บ lastSection
     Object.keys(sections).forEach(k => {
       sections[k].classList.toggle('hidden', k !== sectionKey);
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // นำปุ่มที่มี data-nav ไปเชื่อมกับ showOnly
   document.querySelectorAll('[data-nav]').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-nav');
@@ -305,7 +290,6 @@
     });
   });
 
-  // Dark mode
   document.getElementById('darkToggle').addEventListener('click', () => {
     document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
@@ -314,7 +298,6 @@
     if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark');
   })();
 
-  // DateTime
   function updateDateTime() {
     const now = new Date();
     const options = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
@@ -325,20 +308,16 @@
   }
   setInterval(updateDateTime, 1000); updateDateTime();
 
-  // Splash hide (เสมอหลังโหลด)
   window.addEventListener('load', () => {
     setTimeout(() => {
       const s = document.getElementById('splash');
       s.style.opacity = '0';
       setTimeout(() => s.style.display = 'none', 800);
     }, 1200);
-    // รีเฟรชแล้วขึ้น Welcome เสมอ
     showOnly('welcome');
   });
 
-  /* =========================
-     Auth (Login / Signup / Google)
-     ========================= */
+  /* ========== Auth ========== */
   const loginTab = document.getElementById('loginTab');
   const signupTab = document.getElementById('signupTab');
   const loginForm = document.getElementById('loginForm');
@@ -351,20 +330,17 @@
   signupTab.addEventListener('click', () => {
     signupForm.classList.remove('hidden'); loginForm.classList.add('hidden'); authMessage.textContent = '';
   });
-  // default เปิด login ฟอร์ม
   loginTab.click();
 
-  // Email/Password Login
   loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     auth.signInWithEmailAndPassword(email, password)
       .then(() => { showOnly('calculator'); })
-      .catch(err => authMessage.textContent = err.message);
+      .catch(err => { authMessage.textContent = err.message; console.error(err); });
   });
 
-  // Signup + สร้างโปรไฟล์เบื้องต้น
   signupForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const firstName = document.getElementById('signupFirstName').value.trim();
@@ -372,8 +348,7 @@
     const email = document.getElementById('signupEmail').value.trim();
     const password = document.getElementById('signupPassword').value;
     if (!firstName || !lastName || !email || !password) {
-      authMessage.textContent = 'กรุณากรอกข้อมูลให้ครบทุกช่อง';
-      return;
+      authMessage.textContent = 'กรุณากรอกข้อมูลให้ครบทุกช่อง'; return;
     }
     auth.createUserWithEmailAndPassword(email, password)
       .then(cred => {
@@ -387,16 +362,14 @@
           }, { merge: true }));
       })
       .then(() => { showOnly('profile'); loadProfile(); })
-      .catch(err => authMessage.textContent = err.message);
+      .catch(err => { authMessage.textContent = err.message; console.error(err); });
   });
 
-  // Google Sign-in
   document.getElementById('googleSignInBtn').addEventListener('click', () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider)
       .then(async (res) => {
         const user = res.user;
-        // ถ้าไม่มีเอกสารโปรไฟล์ ให้สร้างเบื้องต้น
         const docRef = db.collection('users').doc(user.uid);
         const snap = await docRef.get();
         if (!snap.exists) {
@@ -412,15 +385,11 @@
         }
         showOnly('calculator');
       })
-      .catch(err => authMessage.textContent = err.message);
+      .catch(err => { authMessage.textContent = err.message; console.error(err); });
   });
 
-  // ออกจากระบบ
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut();
-  });
+  logoutBtn.addEventListener('click', () => { auth.signOut(); });
 
-  // เฝ้าสถานะผู้ใช้
   auth.onAuthStateChanged((user) => {
     if (user) {
       userGreeting.classList.remove('hidden');
@@ -431,14 +400,11 @@
       userGreeting.classList.add('hidden');
       loginNav.classList.remove('hidden');
       logoutBtn.classList.add('hidden');
-      // ผู้ใช้ไม่ได้ล็อกอิน แต่เรายังโชว์ Welcome เสมอ (ตามสเปค)
       showOnly('welcome');
     }
   });
 
-  /* =========================
-     Profile (Load / Save)
-     ========================= */
+  /* ========== Profile Load/Save ========== */
   const profileForm = document.getElementById('profileForm');
   const profileFirstName = document.getElementById('profileFirstName');
   const profileLastName = document.getElementById('profileLastName');
@@ -450,7 +416,7 @@
   async function loadProfile() {
     profileMsg.textContent = '';
     const user = auth.currentUser;
-    if (!user) { profileMsg.textContent = 'กรุณาเข้าสู่ระบบ'; return; }
+    if (!user) { profileMsg.textContent = 'กรุณาเข้าสู่ระบบ'; profileMsg.className='text-red-600 text-sm mt-2'; return; }
     try {
       const snap = await db.collection('users').doc(user.uid).get();
       if (snap.exists) {
@@ -463,7 +429,6 @@
         profileMsg.textContent = 'โหลดข้อมูลสำเร็จ';
         profileMsg.className = 'text-green-600 text-sm mt-2';
       } else {
-        // ถ้าไม่มี profile ให้ใส่ข้อมูลพื้นฐาน
         profileFirstName.value = user.displayName ? user.displayName.split(' ')[0] : '';
         profileLastName.value = user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '';
         profileEmail.value = user.email || '';
@@ -471,6 +436,7 @@
         profileMsg.className = 'text-yellow-600 text-sm mt-2';
       }
     } catch (e) {
+      console.error(e);
       profileMsg.textContent = e.message;
       profileMsg.className = 'text-red-600 text-sm mt-2';
     }
@@ -491,7 +457,6 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
-      // อัปเดตชื่อใน Auth
       const displayName = `${profileFirstName.value.trim()} ${profileLastName.value.trim()}`.trim();
       await user.updateProfile({ displayName });
       userGreeting.textContent = `สวัสดี, ${displayName || user.email}`;
@@ -499,14 +464,13 @@
       profileMsg.textContent = 'บันทึกโปรไฟล์สำเร็จ';
       profileMsg.className = 'text-green-600 text-sm mt-2';
     } catch (e) {
+      console.error(e);
       profileMsg.textContent = e.message;
       profileMsg.className = 'text-red-600 text-sm mt-2';
     }
   });
 
-  /* =========================
-     Upload Preview (Client-side only)
-     ========================= */
+  /* ========== Upload Preview (client only) ========== */
   document.getElementById('receiptUpload').addEventListener('change', function(){
     const files = this.files;
     const fileInfo = document.getElementById('fileInfo');
@@ -533,9 +497,7 @@
     });
   });
 
-  /* =========================
-     Tax Calculator + Save History
-     ========================= */
+  /* ========== Tax Calculator + Save History ========== */
   function calculateTax(income, expense, deduction) {
     const net = income - expense - deduction;
     return net <= 150000 ? 0 : net * 0.05; // ตัวอย่างขั้นเดียว
@@ -543,15 +505,17 @@
 
   document.getElementById('taxForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const income = parseFloat(document.getElementById('income').value);
-    const expense = parseFloat(document.getElementById('expense').value);
-    const deduction = parseFloat(document.getElementById('deduction').value);
-    if (isNaN(income) || isNaN(expense) || isNaN(deduction)) {
+    const income = Number(document.getElementById('income').value);
+    const expense = Number(document.getElementById('expense').value);
+    const deduction = Number(document.getElementById('deduction').value);
+
+    if (Number.isNaN(income) || Number.isNaN(expense) || Number.isNaN(deduction)) {
       alert('กรุณากรอกข้อมูลให้ครบถ้วนและเป็นตัวเลข'); return;
     }
-    const tax = calculateTax(income, expense, deduction);
 
-    // วาดกราฟ
+    const tax = Number(calculateTax(income, expense, deduction)) || 0;
+
+    // Pie
     const ctx = document.getElementById('taxPieChart').getContext('2d');
     if (window.taxChart instanceof Chart) window.taxChart.destroy();
     const needTax = (income - expense - deduction) > 150000 ? 100 : 0;
@@ -566,29 +530,33 @@
 
     calcMsg.textContent = '';
 
-    // บันทึกประวัติ (ถ้าล็อกอิน)
+    // Save history
     const user = auth.currentUser;
     if (!user) {
-      calcMsg.textContent = 'คำแนะนำ: เข้าสู่ระบบเพื่อบันทึกประวัติการคำนวณ';
+      calcMsg.textContent = 'ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึกประวัติ';
       calcMsg.className = 'text-yellow-600 text-sm mt-3';
       return;
     }
+
     try {
-      await db.collection('users').doc(user.uid).collection('calculations').add({
-        income, expense, deduction, tax,
+      const payload = {
+        income: income || 0,
+        expense: expense || 0,
+        deduction: deduction || 0,
+        tax: tax || 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+      await db.collection('users').doc(user.uid).collection('calculations').add(payload);
       calcMsg.textContent = 'บันทึกประวัติการคำนวณแล้ว';
       calcMsg.className = 'text-green-600 text-sm mt-3';
     } catch (e) {
-      calcMsg.textContent = e.message;
+      console.error('Save calc failed:', e);
+      calcMsg.textContent = `บันทึกล้มเหลว: ${e.code || ''} ${e.message || ''}`;
       calcMsg.className = 'text-red-600 text-sm mt-3';
     }
   });
 
-  /* =========================
-     History (Load / Delete)
-     ========================= */
+  /* ========== History (Load / Delete) ========== */
   async function loadHistory() {
     historyMsg.textContent = '';
     historyBody.innerHTML = '';
@@ -608,7 +576,7 @@
       }
       snap.forEach(doc => {
         const d = doc.data();
-        const dt = d.createdAt ? d.createdAt.toDate() : new Date();
+        const dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : new Date();
         const tr = document.createElement('tr');
         tr.className = 'border-b dark:border-gray-700';
         tr.innerHTML = `
@@ -624,7 +592,6 @@
         historyBody.appendChild(tr);
       });
 
-      // ปุ่มลบ
       historyBody.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', async () => {
           if (!confirm('ยืนยันการลบรายการนี้?')) return;
@@ -632,17 +599,18 @@
             await db.collection('users').doc(user.uid).collection('calculations').doc(btn.getAttribute('data-del')).delete();
             loadHistory();
           } catch (e) {
+            console.error(e);
             alert(e.message);
           }
         });
       });
     } catch (e) {
+      console.error(e);
       historyMsg.textContent = e.message;
       historyMsg.className = 'text-red-600';
     }
   }
   document.getElementById('refreshHistory').addEventListener('click', loadHistory);
-
 </script>
 </body>
 </html>
