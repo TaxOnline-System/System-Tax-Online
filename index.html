@@ -9,7 +9,7 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- html2pdf (ถ้าจะใช้ส่งออก PDF ภายหลัง) -->
+<!-- html2pdf (สำหรับส่งออก PDF) -->
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 
 <!-- Firebase v8 (App/Auth/Firestore) -->
@@ -71,7 +71,7 @@
   <section id="welcomeSection" class="fade-in text-center px-6">
     <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 mb-4">คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!</h2>
     <p class="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto">
-      เว็บไซต์คำนวณภาษีสำหรับพ่อค้าแม่ค้าออนไลน์ อัปโหลดใบเสร็จขึ้น <b>Google Drive ของคุณเอง</b> (ฟรี) และบันทึกประวัติไว้ใน Firestore
+      อัปโหลดใบเสร็จขึ้น <b>Google Drive ของคุณเอง</b> (ฟรี) และบันทึกประวัติไว้ใน Firestore — เหมาะสำหรับแนบประกอบการยื่นภาษี
     </p>
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
       <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มคำนวณเลย</button>
@@ -192,7 +192,12 @@
     <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-2xl font-semibold text-pink-600">ประวัติการคำนวณ</h3>
-        <button id="refreshHistory" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
+        <div class="flex gap-2">
+          <button id="refreshHistory" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
+          <button id="downloadCsvBtn" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm">ดาวน์โหลด CSV</button>
+          <button id="downloadPdfBtn" class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm">ดาวน์โหลดสรุป PDF</button>
+          <button id="openDriveFolderBtn" class="px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm">เปิดโฟลเดอร์ Drive</button>
+        </div>
       </div>
       <div class="overflow-auto">
         <table class="min-w-full text-sm">
@@ -212,6 +217,9 @@
       <p id="historyMsg" class="text-sm mt-3"></p>
     </div>
   </section>
+
+  <!-- พื้นที่ทำ PDF (ซ่อน) -->
+  <section id="pdfReport" class="hidden bg-white p-6"></section>
 
 </div>
 
@@ -236,7 +244,7 @@ const auth = firebase.auth();
 /* =========================
    Google Drive OAuth (GIS)
    ========================= */
-const GOOGLE_OAUTH_CLIENT_ID = "959276043439-rpc16dfdslna3ndjijicg0gehu8klp93.apps.googleusercontent.com"; // << ใช้ตัวที่ให้มา
+const GOOGLE_OAUTH_CLIENT_ID = "959276043439-rpc16dfdslna3ndjijicg0gehu8klp93.apps.googleusercontent.com";
 const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
 let driveTokenClient = null;
 let driveAccessToken = null;
@@ -303,37 +311,53 @@ async function ensureDriveToken(){
   });
 }
 
-// สร้างโฟลเดอร์ "TaxOnline Receipts" ใน Drive ครั้งแรก แล้ว cache ไว้ใน localStorage
+// คืนค่า { id, webViewLink } ของโฟลเดอร์ "TaxOnline Receipts" และแคชไว้ใน localStorage
 async function getOrCreateDriveFolder(){
-  const cacheKey = 'taxonline_drive_folder_id';
+  const cacheKey = 'taxonline_drive_folder';
   const cached = localStorage.getItem(cacheKey);
-  if (cached) return cached;
+  if (cached) return JSON.parse(cached);
 
   await ensureDriveToken();
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+
+  // ค้นหาโฟลเดอร์เดิมก่อน
+  const searchRes = await fetch(
+    'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name='TaxOnline Receipts' and mimeType='application/vnd.google-apps.folder' and trashed=false") + '&fields=files(id,webViewLink)',
+    { headers: { 'Authorization': 'Bearer ' + driveAccessToken } }
+  );
+  if (searchRes.ok) {
+    const j = await searchRes.json();
+    if (j.files && j.files.length > 0) {
+      const found = { id: j.files[0].id, webViewLink: j.files[0].webViewLink };
+      localStorage.setItem(cacheKey, JSON.stringify(found));
+      return found;
+    }
+  }
+
+  // ไม่พบ → สร้างใหม่
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
     method: 'POST',
     headers: {
       'Authorization': 'Bearer ' + driveAccessToken,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      name: 'TaxOnline Receipts',
-      mimeType: 'application/vnd.google-apps.folder'
-    })
+    body: JSON.stringify({ name: 'TaxOnline Receipts', mimeType: 'application/vnd.google-apps.folder' })
   });
   if (!createRes.ok) {
     const t = await createRes.text();
     throw new Error('สร้างโฟลเดอร์ใน Drive ไม่สำเร็จ: ' + t);
   }
   const data = await createRes.json();
-  localStorage.setItem(cacheKey, data.id);
-  return data.id;
+  const out = { id: data.id, webViewLink: data.webViewLink };
+  localStorage.setItem(cacheKey, JSON.stringify(out));
+  return out;
 }
 
 // อัปโหลดไฟล์ไปยัง Drive (multipart) แล้วคืน {name,size,mimeType,driveFileId,webViewLink}
-async function uploadFilesToDrive(files, parentId){
+async function uploadFilesToDrive(files, parentInfo){
   await ensureDriveToken();
   const results = [];
+  const parentId = parentInfo?.id;
+
   for (const file of Array.from(files || [])) {
     const metadata = {
       name: file.name,
@@ -631,10 +655,9 @@ document.getElementById('taxForm').addEventListener('submit', async (e)=>{
     // 2) ถ้ามีไฟล์ → อัปโหลดไป Google Drive ของผู้ใช้
     let uploaded = [];
     if (files.length > 0) {
-      // ต้องเชื่อมต่อ Drive อย่างน้อยหนึ่งครั้ง
       await ensureDriveToken(); // ถ้ายังไม่เชื่อม ระบบจะเด้งขอสิทธิ์
-      const folderId = await getOrCreateDriveFolder();
-      uploaded = await uploadFilesToDrive(files, folderId);
+      const folderInfo = await getOrCreateDriveFolder(); // {id, webViewLink}
+      uploaded = await uploadFilesToDrive(files, folderInfo);
     }
 
     // 3) อัปเดตเอกสารด้วยข้อมูลไฟล์จาก Drive
@@ -714,20 +737,104 @@ async function loadHistory(){
 document.getElementById('refreshHistory').addEventListener('click', loadHistory);
 
 /* =========================
+   Export CSV / PDF / Open Drive folder
+   ========================= */
+async function fetchAllCalculations() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
+  const snap = await db.collection('users').doc(user.uid)
+    .collection('calculations').orderBy('createdAt','desc').get();
+  return snap.docs.map(d => {
+    const v = d.data();
+    const dt = v.createdAt && v.createdAt.toDate ? v.createdAt.toDate() : null;
+    return {
+      id: d.id,
+      date: dt ? dt.toLocaleString('th-TH') : '',
+      income: v.income || 0,
+      expense: v.expense || 0,
+      deduction: v.deduction || 0,
+      tax: v.tax || 0,
+      receipts: Array.isArray(v.receipts) ? v.receipts : []
+    };
+  });
+}
+
+async function exportHistoryCSV() {
+  try {
+    const rows = await fetchAllCalculations();
+    const header = ['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี','ไฟล์ใบเสร็จ(ลิงก์)'];
+    const lines = [header.join(',')];
+    rows.forEach(r => {
+      const links = r.receipts.map((x,i) => x.webViewLink||'').join(' | ');
+      lines.push([
+        `"${r.date}"`,
+        r.income,
+        r.expense,
+        r.deduction,
+        r.tax,
+        `"${links}"`
+      ].join(','));
+    });
+    const csv = '\ufeff' + lines.join('\n'); // BOM เพื่อรองรับภาษาไทย
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'taxonline_history.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { alert(e.message || e); }
+}
+
+async function exportHistoryPDF() {
+  try {
+    const rows = await fetchAllCalculations();
+    const wrap = document.getElementById('pdfReport');
+    if (!wrap) return;
+    wrap.innerHTML = `
+      <h2 style="font-size:20px;margin-bottom:8px;">สรุปประวัติการคำนวณภาษี (TaxOnline)</h2>
+      <div style="font-size:12px;color:#555;margin-bottom:12px;">พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}</div>
+      <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th>วันที่</th><th>รายได้</th><th>รายจ่าย</th><th>ลดหย่อน</th><th>ภาษี</th><th>ใบเสร็จ (ลิงก์)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${r.date}</td>
+              <td>${r.income.toLocaleString('th-TH')}</td>
+              <td>${r.expense.toLocaleString('th-TH')}</td>
+              <td>${r.deduction.toLocaleString('th-TH')}</td>
+              <td><b>${r.tax.toLocaleString('th-TH')}</b></td>
+              <td>${r.receipts.map((x,i)=>`<a href="${x.webViewLink}" target="_blank">ไฟล์ ${i+1}</a>`).join(' · ') || '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="font-size:11px;color:#666;margin-top:12px;">
+        * เอกสารนี้เป็นสรุปตัวเลขเพื่อแนบประกอบการยื่นภาษี ผู้เสียภาษีควรเก็บใบเสร็จต้นฉบับ/สำเนาไว้สำหรับการตรวจสอบภายหลัง
+      </div>
+    `;
+    const opt = { margin:10, filename:'taxonline_summary.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'} };
+    await html2pdf().from(wrap).set(opt).save();
+  } catch(e) { alert(e.message || e); }
+}
+
+async function openDriveFolder() {
+  try {
+    const { webViewLink } = await getOrCreateDriveFolder();
+    if (!webViewLink) { alert('ยังไม่มีโฟลเดอร์'); return; }
+    window.open(webViewLink, '_blank');
+  } catch(e) { alert(e.message || e); }
+}
+
+document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
+document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF);
+document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
+
+/* =========================
    Misc (clock, splash)
    ========================= */
-</script>
-
-<script>
-// splash + clock
-</script>
-
-<script>
-// run splash/clock
-</script>
-
-<script>
-// minimal splash/clock init
 (function(){
   function updateDateTime(){
     const now = new Date();
@@ -741,6 +848,5 @@ document.getElementById('refreshHistory').addEventListener('click', loadHistory)
   });
 })();
 </script>
-
 </body>
 </html>
