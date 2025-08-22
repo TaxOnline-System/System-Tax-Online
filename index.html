@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaxOnline (Drive) - ระบบคำนวณภาษี + อัปโหลดไป Google Drive</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TaxOnline (Drive) - ระบบคำนวณภาษี + อัปโหลดใบเสร็จไป Google Drive</title>
 
 <!-- Tailwind -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- html2pdf (สำหรับส่งออก PDF) -->
+<!-- html2pdf (มี html2canvas ภายใน) -->
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<!-- jsPDF (fallback ป้องกัน PDF หน้าโล่ง) -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
-<!-- Firebase v8 (App/Auth/Firestore) -->
+<!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -777,7 +779,7 @@ async function exportHistoryCSV() {
         `"${links}"`
       ].join(','));
     });
-    const csv = '\ufeff' + lines.join('\n'); // BOM เพื่อรองรับภาษาไทย
+    const csv = '\ufeff' + lines.join('\n'); // BOM ภาษาไทย
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -786,20 +788,25 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* ===== FIX: ทำให้ #pdfReport มองเห็นชั่วคราวก่อนแปลง เพื่อกัน "หน้า PDF ว่าง" ===== */
+/* ===== PDF: มี fallback กันหน้า "ขาว" ===== */
 async function exportHistoryPDF() {
   try {
     const rows = await fetchAllCalculations();
     const wrap = document.getElementById('pdfReport');
-    if (!wrap) { alert('ไม่พบพื้นที่สำหรับทำ PDF (#pdfReport)'); return; }
+    if (!wrap) { alert('ไม่พบ #pdfReport'); return; }
 
-    // เตรียมเนื้อหา
+    // เนื้อหา
     wrap.innerHTML = `
+      <style>
+        .pdf-table { width:100%; border-collapse:collapse; font-size:12px }
+        .pdf-table th, .pdf-table td { border:1px solid #ddd; padding:6px; }
+        .pdf-table thead th { background:#f3f4f6; }
+      </style>
       <h2 style="font-size:20px;margin-bottom:8px;">สรุปประวัติการคำนวณภาษี (TaxOnline)</h2>
       <div style="font-size:12px;color:#555;margin-bottom:12px;">พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}</div>
-      <table border="1" cellspacing="0" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:12px;">
+      <table class="pdf-table">
         <thead>
-          <tr style="background:#f3f4f6;">
+          <tr>
             <th>วันที่</th><th>รายได้</th><th>รายจ่าย</th><th>ลดหย่อน</th><th>ภาษี</th><th>ใบเสร็จ (ลิงก์)</th>
           </tr>
         </thead>
@@ -821,32 +828,75 @@ async function exportHistoryPDF() {
       </div>
     `;
 
-    // ทำให้มองเห็นได้ชั่วคราว (ไม่ display:none) และเรนเดอร์นอกจอ
+    // ทำให้มองเห็นได้ชั่วคราว (กัน display:none)
     const prevClass = wrap.className;
     const prevStyle = wrap.getAttribute('style') || '';
     wrap.classList.remove('hidden');
     wrap.style.position = 'absolute';
     wrap.style.left = '-9999px';
     wrap.style.top = '0';
-    wrap.style.width = '794px';            // ความกว้างใกล้ A4 ที่คมชัดดี
+    wrap.style.width = '794px';     // ~ A4
     wrap.style.background = '#ffffff';
 
-    // รอ 1 เฟรมให้ DOM วาดเสร็จ
-    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+    // รอ DOM วาด
+    await new Promise(r => requestAnimationFrame(()=>setTimeout(r, 80)));
 
+    // แผนหลัก: html2pdf
     const opt = {
-      margin:       10,
-      filename:     'taxonline_summary.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, backgroundColor: '#ffffff' },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      margin: 10,
+      filename: 'taxonline_summary.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    await html2pdf().from(wrap).set(opt).save();
 
-    // คืนค่าการแสดงผลเดิม
+    try {
+      await html2pdf().from(wrap).set(opt).save();
+    } catch (err1) {
+      console.warn('html2pdf ล้มเหลว → fallback ด้วย jsPDF:', err1);
+
+      // แผนสำรอง: แปลง DOM เป็นภาพแล้วใส่ jsPDF
+      const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const { jsPDF } = window.jspdf || {};
+      if (!jsPDF) throw new Error('ไม่พบ jsPDF UMD');
+
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW - 20; // margin ซ้าย/ขวา 10mm
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      if (imgH <= pageH - 20) {
+        pdf.addImage(imgData, 'JPEG', 10, 10, imgW, imgH);
+      } else {
+        // ตัดหลายหน้า
+        const sliceH = (pageH - 20) * canvas.width / imgW;
+        let pos = 0;
+        while (pos < canvas.height) {
+          const part = document.createElement('canvas');
+          part.width = canvas.width;
+          part.height = Math.min(sliceH, canvas.height - pos);
+          const ctx = part.getContext('2d');
+          ctx.drawImage(canvas, 0, pos, canvas.width, part.height, 0, 0, canvas.width, part.height);
+          const partData = part.toDataURL('image/jpeg', 0.98);
+
+          const partH_mm = (part.height * imgW) / part.width;
+          if (pos > 0) pdf.addPage();
+          pdf.addImage(partData, 'JPEG', 10, 10, imgW, partH_mm);
+          pos += sliceH;
+        }
+      }
+      pdf.save('taxonline_summary.pdf');
+    }
+
+    // คืนสภาพ
     wrap.className = prevClass;
     if (prevStyle) wrap.setAttribute('style', prevStyle); else wrap.removeAttribute('style');
-  } catch(e) { console.error(e); alert(e.message || e); }
+  } catch(e) {
+    console.error(e);
+    alert(e.message || e);
+  }
 }
 
 async function openDriveFolder() {
