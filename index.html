@@ -28,6 +28,8 @@
   .splash-spinner{width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;animation:spin 1.4s linear infinite}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .nav-link{display:inline-block;margin:.25rem .4rem}
+  /* กันกรณีลืมลบ hidden ตอน export PDF: กำหนดพื้นหลังขาวไว้ */
+  #pdfReport{background:#fff;}
 </style>
 </head>
 <body class="font-sans">
@@ -784,11 +786,14 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
+/* ===== FIX: ทำให้ #pdfReport มองเห็นชั่วคราวก่อนแปลง เพื่อกัน "หน้า PDF ว่าง" ===== */
 async function exportHistoryPDF() {
   try {
     const rows = await fetchAllCalculations();
     const wrap = document.getElementById('pdfReport');
-    if (!wrap) return;
+    if (!wrap) { alert('ไม่พบพื้นที่สำหรับทำ PDF (#pdfReport)'); return; }
+
+    // เตรียมเนื้อหา
     wrap.innerHTML = `
       <h2 style="font-size:20px;margin-bottom:8px;">สรุปประวัติการคำนวณภาษี (TaxOnline)</h2>
       <div style="font-size:12px;color:#555;margin-bottom:12px;">พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}</div>
@@ -806,18 +811,42 @@ async function exportHistoryPDF() {
               <td>${r.expense.toLocaleString('th-TH')}</td>
               <td>${r.deduction.toLocaleString('th-TH')}</td>
               <td><b>${r.tax.toLocaleString('th-TH')}</b></td>
-              <td>${r.receipts.map((x,i)=>`<a href="${x.webViewLink}" target="_blank">ไฟล์ ${i+1}</a>`).join(' · ') || '—'}</td>
+              <td>${(r.receipts||[]).map((x,i)=>`<a href="${x.webViewLink}" target="_blank">ไฟล์ ${i+1}</a>`).join(' · ') || '—'}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
       <div style="font-size:11px;color:#666;margin-top:12px;">
-        * เอกสารนี้เป็นสรุปตัวเลขเพื่อแนบประกอบการยื่นภาษี ผู้เสียภาษีควรเก็บใบเสร็จต้นฉบับ/สำเนาไว้สำหรับการตรวจสอบภายหลัง
+        * เอกสารนี้เป็นสรุปตัวเลขเพื่อแนบประกอบการยื่นภาษี โปรดเก็บใบเสร็จต้นฉบับ/สำเนาไว้สำหรับการตรวจสอบภายหลัง
       </div>
     `;
-    const opt = { margin:10, filename:'taxonline_summary.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'mm',format:'a4',orientation:'portrait'} };
+
+    // ทำให้มองเห็นได้ชั่วคราว (ไม่ display:none) และเรนเดอร์นอกจอ
+    const prevClass = wrap.className;
+    const prevStyle = wrap.getAttribute('style') || '';
+    wrap.classList.remove('hidden');
+    wrap.style.position = 'absolute';
+    wrap.style.left = '-9999px';
+    wrap.style.top = '0';
+    wrap.style.width = '794px';            // ความกว้างใกล้ A4 ที่คมชัดดี
+    wrap.style.background = '#ffffff';
+
+    // รอ 1 เฟรมให้ DOM วาดเสร็จ
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+
+    const opt = {
+      margin:       10,
+      filename:     'taxonline_summary.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, backgroundColor: '#ffffff' },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
     await html2pdf().from(wrap).set(opt).save();
-  } catch(e) { alert(e.message || e); }
+
+    // คืนค่าการแสดงผลเดิม
+    wrap.className = prevClass;
+    if (prevStyle) wrap.setAttribute('style', prevStyle); else wrap.removeAttribute('style');
+  } catch(e) { console.error(e); alert(e.message || e); }
 }
 
 async function openDriveFolder() {
