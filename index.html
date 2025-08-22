@@ -9,10 +9,10 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- html2pdf (มี html2canvas ภายใน) -->
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-<!-- jsPDF (fallback ป้องกัน PDF หน้าโล่ง) -->
+
+<!-- jsPDF + autoTable (สร้าง PDF ตรงๆ กันหน้าขาว) -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
 <!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -30,8 +30,6 @@
   .splash-spinner{width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;animation:spin 1.4s linear infinite}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .nav-link{display:inline-block;margin:.25rem .4rem}
-  /* กันกรณีลืมลบ hidden ตอน export PDF: กำหนดพื้นหลังขาวไว้ */
-  #pdfReport{background:#fff;}
 </style>
 </head>
 <body class="font-sans">
@@ -222,9 +220,6 @@
     </div>
   </section>
 
-  <!-- พื้นที่ทำ PDF (ซ่อน) -->
-  <section id="pdfReport" class="hidden bg-white p-6"></section>
-
 </div>
 
 <footer class="bg-white p-4 text-center text-sm text-gray-500">
@@ -315,7 +310,7 @@ async function ensureDriveToken(){
   });
 }
 
-// คืนค่า { id, webViewLink } ของโฟลเดอร์ "TaxOnline Receipts" และแคชไว้ใน localStorage
+// คืนค่า { id, webViewLink } ของโฟลเดอร์ "TaxOnline Receipts" (แคชใน localStorage)
 async function getOrCreateDriveFolder(){
   const cacheKey = 'taxonline_drive_folder';
   const cached = localStorage.getItem(cacheKey);
@@ -323,7 +318,7 @@ async function getOrCreateDriveFolder(){
 
   await ensureDriveToken();
 
-  // ค้นหาโฟลเดอร์เดิมก่อน
+  // ค้นหา
   const searchRes = await fetch(
     'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name='TaxOnline Receipts' and mimeType='application/vnd.google-apps.folder' and trashed=false") + '&fields=files(id,webViewLink)',
     { headers: { 'Authorization': 'Bearer ' + driveAccessToken } }
@@ -337,7 +332,7 @@ async function getOrCreateDriveFolder(){
     }
   }
 
-  // ไม่พบ → สร้างใหม่
+  // สร้างใหม่
   const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
     method: 'POST',
     headers: {
@@ -356,7 +351,7 @@ async function getOrCreateDriveFolder(){
   return out;
 }
 
-// อัปโหลดไฟล์ไปยัง Drive (multipart) แล้วคืน {name,size,mimeType,driveFileId,webViewLink}
+// อัปโหลดไฟล์ไป Drive → คืน {name,size,mimeType,driveFileId,webViewLink}
 async function uploadFilesToDrive(files, parentInfo){
   await ensureDriveToken();
   const results = [];
@@ -659,7 +654,7 @@ document.getElementById('taxForm').addEventListener('submit', async (e)=>{
     // 2) ถ้ามีไฟล์ → อัปโหลดไป Google Drive ของผู้ใช้
     let uploaded = [];
     if (files.length > 0) {
-      await ensureDriveToken(); // ถ้ายังไม่เชื่อม ระบบจะเด้งขอสิทธิ์
+      await ensureDriveToken();
       const folderInfo = await getOrCreateDriveFolder(); // {id, webViewLink}
       uploaded = await uploadFilesToDrive(files, folderInfo);
     }
@@ -721,7 +716,7 @@ async function loadHistory(){
       historyBody.appendChild(tr);
     });
 
-    // ลบเฉพาะเอกสาร Firestore (ไฟล์ใน Drive ผู้ใช้ลบเองใน Drive)
+    // ลบเฉพาะเอกสาร Firestore
     historyBody.querySelectorAll('[data-del]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         if (!confirm('ยืนยันการลบรายการนี้?')) return;
@@ -788,112 +783,83 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* ===== PDF: มี fallback กันหน้า "ขาว" ===== */
 async function exportHistoryPDF() {
   try {
     const rows = await fetchAllCalculations();
-    const wrap = document.getElementById('pdfReport');
-    if (!wrap) { alert('ไม่พบ #pdfReport'); return; }
+    if (!rows || rows.length === 0) { alert('ยังไม่มีข้อมูลประวัติ'); return; }
 
-    // เนื้อหา
-    wrap.innerHTML = `
-      <style>
-        .pdf-table { width:100%; border-collapse:collapse; font-size:12px }
-        .pdf-table th, .pdf-table td { border:1px solid #ddd; padding:6px; }
-        .pdf-table thead th { background:#f3f4f6; }
-      </style>
-      <h2 style="font-size:20px;margin-bottom:8px;">สรุปประวัติการคำนวณภาษี (TaxOnline)</h2>
-      <div style="font-size:12px;color:#555;margin-bottom:12px;">พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}</div>
-      <table class="pdf-table">
-        <thead>
-          <tr>
-            <th>วันที่</th><th>รายได้</th><th>รายจ่าย</th><th>ลดหย่อน</th><th>ภาษี</th><th>ใบเสร็จ (ลิงก์)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(r => `
-            <tr>
-              <td>${r.date}</td>
-              <td>${r.income.toLocaleString('th-TH')}</td>
-              <td>${r.expense.toLocaleString('th-TH')}</td>
-              <td>${r.deduction.toLocaleString('th-TH')}</td>
-              <td><b>${r.tax.toLocaleString('th-TH')}</b></td>
-              <td>${(r.receipts||[]).map((x,i)=>`<a href="${x.webViewLink}" target="_blank">ไฟล์ ${i+1}</a>`).join(' · ') || '—'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div style="font-size:11px;color:#666;margin-top:12px;">
-        * เอกสารนี้เป็นสรุปตัวเลขเพื่อแนบประกอบการยื่นภาษี โปรดเก็บใบเสร็จต้นฉบับ/สำเนาไว้สำหรับการตรวจสอบภายหลัง
-      </div>
-    `;
-
-    // ทำให้มองเห็นได้ชั่วคราว (กัน display:none)
-    const prevClass = wrap.className;
-    const prevStyle = wrap.getAttribute('style') || '';
-    wrap.classList.remove('hidden');
-    wrap.style.position = 'absolute';
-    wrap.style.left = '-9999px';
-    wrap.style.top = '0';
-    wrap.style.width = '794px';     // ~ A4
-    wrap.style.background = '#ffffff';
-
-    // รอ DOM วาด
-    await new Promise(r => requestAnimationFrame(()=>setTimeout(r, 80)));
-
-    // แผนหลัก: html2pdf
-    const opt = {
-      margin: 10,
-      filename: 'taxonline_summary.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    try {
-      await html2pdf().from(wrap).set(opt).save();
-    } catch (err1) {
-      console.warn('html2pdf ล้มเหลว → fallback ด้วย jsPDF:', err1);
-
-      // แผนสำรอง: แปลง DOM เป็นภาพแล้วใส่ jsPDF
-      const canvas = await html2canvas(wrap, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-      const imgData = canvas.toDataURL('image/jpeg', 0.98);
-      const { jsPDF } = window.jspdf || {};
-      if (!jsPDF) throw new Error('ไม่พบ jsPDF UMD');
-
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW - 20; // margin ซ้าย/ขวา 10mm
-      const imgH = (canvas.height * imgW) / canvas.width;
-
-      if (imgH <= pageH - 20) {
-        pdf.addImage(imgData, 'JPEG', 10, 10, imgW, imgH);
-      } else {
-        // ตัดหลายหน้า
-        const sliceH = (pageH - 20) * canvas.width / imgW;
-        let pos = 0;
-        while (pos < canvas.height) {
-          const part = document.createElement('canvas');
-          part.width = canvas.width;
-          part.height = Math.min(sliceH, canvas.height - pos);
-          const ctx = part.getContext('2d');
-          ctx.drawImage(canvas, 0, pos, canvas.width, part.height, 0, 0, canvas.width, part.height);
-          const partData = part.toDataURL('image/jpeg', 0.98);
-
-          const partH_mm = (part.height * imgW) / part.width;
-          if (pos > 0) pdf.addPage();
-          pdf.addImage(partData, 'JPEG', 10, 10, imgW, partH_mm);
-          pos += sliceH;
-        }
-      }
-      pdf.save('taxonline_summary.pdf');
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF || !('autoTable' in (new jsPDF()))) {
+      alert('ไม่พบ jsPDF หรือปลั๊กอิน autoTable'); return;
     }
 
-    // คืนสภาพ
-    wrap.className = prevClass;
-    if (prevStyle) wrap.setAttribute('style', prevStyle); else wrap.removeAttribute('style');
-  } catch(e) {
+    const user = auth.currentUser;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+    // Header
+    doc.setFontSize(16);
+    doc.text('สรุปประวัติการคำนวณภาษี (TaxOnline)', 10, 14);
+    doc.setFontSize(10);
+    doc.text(`ผู้ใช้: ${user ? (user.displayName || user.email) : '-'}`, 10, 20);
+    doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
+
+    // Table
+    const head = [['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี','ใบเสร็จ']];
+    const body = rows.map((r, idx) => [
+      r.date || '',
+      (r.income ?? 0).toLocaleString('th-TH'),
+      (r.expense ?? 0).toLocaleString('th-TH'),
+      (r.deduction ?? 0).toLocaleString('th-TH'),
+      (r.tax ?? 0).toLocaleString('th-TH'),
+      (r.receipts && r.receipts.length) ? r.receipts.map((x,i)=>`ไฟล์ ${i+1}`).join(' , ') : '—'
+    ]);
+
+    doc.autoTable({
+      head, body,
+      startY: 32,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [243,244,246], textColor: 0 },
+      columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:26}, 2:{cellWidth:26}, 3:{cellWidth:26}, 4:{cellWidth:26}, 5:{cellWidth:'auto'} },
+      didDrawPage: (data) => {
+        const pageCount = doc.internal.getNumberOfPages();
+        const str = `หน้า ${doc.internal.getCurrentPageInfo().pageNumber} / ${pageCount}`;
+        doc.setFontSize(9);
+        doc.text(str, 200 - doc.getTextWidth(str) - 10, 291);
+      }
+    });
+
+    // Appendix: clickable links
+    let y = doc.lastAutoTable.finalY + 6;
+    const linkLines = [];
+    rows.forEach((r, idx) => {
+      (r.receipts || []).forEach((x, i) => {
+        if (x.webViewLink) {
+          linkLines.push({ text: `แถว ${idx + 1} → ไฟล์ ${i + 1}: ${x.webViewLink}`, url: x.webViewLink });
+        }
+      });
+    });
+
+    if (linkLines.length) {
+      doc.setFontSize(11);
+      doc.text('ลิงก์ใบเสร็จ (คลิกได้):', 10, y);
+      y += 5;
+      doc.setFontSize(9);
+
+      for (const ln of linkLines) {
+        const wrapped = doc.splitTextToSize(ln.text, 190);
+        doc.text(wrapped, 10, y);
+        doc.link(10, y - 3, doc.getTextWidth(wrapped[0]), 5, { url: ln.url });
+        y += wrapped.length * 5;
+        if (y > 280) { doc.addPage(); y = 14; }
+      }
+    } else {
+      const y0 = doc.lastAutoTable.finalY + 6;
+      doc.setFontSize(10);
+      doc.text('ไม่มีไฟล์ใบเสร็จแนบในรายการเหล่านี้', 10, y0);
+    }
+
+    doc.save('taxonline_summary.pdf');
+  } catch (e) {
     console.error(e);
     alert(e.message || e);
   }
