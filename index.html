@@ -9,6 +9,11 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- jsPDF + AutoTable (สร้าง PDF ตาราง) -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.3/dist/jspdf.plugin.autotable.min.js"></script>
+
 <!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
@@ -207,10 +212,26 @@
   <!-- History -->
   <section id="historySection" class="hidden fade-in px-4">
     <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl dark:bg-gray-900">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
         <h3 class="text-2xl font-semibold text-pink-600">ประวัติการคำนวณ</h3>
-        <button id="refreshHistory" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
+
+        <div class="flex flex-wrap items-end gap-2">
+          <!-- ตัวกรองวันที่ -->
+          <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400">จากวันที่</label>
+            <input type="date" id="histFrom" class="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-white">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 dark:text-gray-400">ถึงวันที่</label>
+            <input type="date" id="histTo" class="border rounded px-2 py-1 text-sm dark:bg-gray-800 dark:text-white">
+          </div>
+
+          <button id="refreshHistory" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
+          <button id="exportCsvBtn" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm">ส่งออก CSV</button>
+          <button id="exportPdfBtn" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">ส่งออก PDF</button>
+        </div>
       </div>
+
       <div class="overflow-auto">
         <table class="min-w-full text-sm">
           <thead>
@@ -335,7 +356,8 @@
   loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    thePassword = document.getElementById('loginPassword').value; // keep variable name typo-safe
+    const password = thePassword;
     auth.signInWithEmailAndPassword(email, password)
       .then(() => { showOnly('calculator'); })
       .catch(err => { authMessage.textContent = err.message; console.error(err); });
@@ -556,35 +578,69 @@
     }
   });
 
-  /* ========== History (Load / Delete) ========== */
+  /* ========== History (Filter/Export/Delete) ========== */
+  let _lastHistoryRows = []; // cache สำหรับส่งออก [{id,date,income,expense,deduction,tax}]
+
+  const fmtTH = (n) => (Number(n) || 0).toLocaleString('th-TH');
+  const toYMD = (d) => {
+    const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${dd}`;
+  };
+
   async function loadHistory() {
     historyMsg.textContent = '';
     historyBody.innerHTML = '';
+    _lastHistoryRows = [];
     const user = auth.currentUser;
     if (!user) { historyMsg.textContent = 'กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
 
     try {
-      const snap = await db.collection('users').doc(user.uid)
-        .collection('calculations')
-        .orderBy('createdAt','desc')
-        .limit(50)
-        .get();
+      const fromEl = document.getElementById('histFrom');
+      const toEl   = document.getElementById('histTo');
+      const hasFrom = fromEl && fromEl.value;
+      const hasTo   = toEl && toEl.value;
+
+      let ref = db.collection('users').doc(user.uid).collection('calculations');
+
+      // filter by date range if provided
+      if (hasFrom) {
+        const fromDate = new Date(fromEl.value + 'T00:00:00');
+        ref = ref.where('createdAt','>=', firebase.firestore.Timestamp.fromDate(fromDate));
+      }
+      if (hasTo) {
+        const toDateEnd = new Date(toEl.value + 'T23:59:59');
+        ref = ref.where('createdAt','<=', firebase.firestore.Timestamp.fromDate(toDateEnd));
+      }
+
+      ref = ref.orderBy('createdAt','desc').limit(500);
+      const snap = await ref.get();
 
       if (snap.empty) {
-        historyBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีประวัติการคำนวณ</td></tr>`;
+        historyBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ไม่พบข้อมูล</td></tr>`;
         return;
       }
+
       snap.forEach(doc => {
         const d = doc.data();
         const dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : new Date();
+        const row = {
+          id: doc.id,
+          date: dt,
+          income: Number(d.income)||0,
+          expense: Number(d.expense)||0,
+          deduction: Number(d.deduction)||0,
+          tax: Number(d.tax)||0
+        };
+        _lastHistoryRows.push(row);
+
         const tr = document.createElement('tr');
         tr.className = 'border-b dark:border-gray-700';
         tr.innerHTML = `
           <td class="px-3 py-2 whitespace-nowrap">${dt.toLocaleString('th-TH')}</td>
-          <td class="px-3 py-2 whitespace-nowrap">${(d.income || 0).toLocaleString('th-TH')}</td>
-          <td class="px-3 py-2 whitespace-nowrap">${(d.expense || 0).toLocaleString('th-TH')}</td>
-          <td class="px-3 py-2 whitespace-nowrap">${(d.deduction || 0).toLocaleString('th-TH')}</td>
-          <td class="px-3 py-2 whitespace-nowrap font-semibold">${(d.tax || 0).toLocaleString('th-TH')}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${fmtTH(row.income)}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${fmtTH(row.expense)}</td>
+          <td class="px-3 py-2 whitespace-nowrap">${fmtTH(row.deduction)}</td>
+          <td class="px-3 py-2 whitespace-nowrap font-semibold">${fmtTH(row.tax)}</td>
           <td class="px-3 py-2">
             <button data-del="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button>
           </td>
@@ -592,6 +648,7 @@
         historyBody.appendChild(tr);
       });
 
+      // delete buttons
       historyBody.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', async () => {
           if (!confirm('ยืนยันการลบรายการนี้?')) return;
@@ -604,6 +661,7 @@
           }
         });
       });
+
     } catch (e) {
       console.error(e);
       historyMsg.textContent = e.message;
@@ -611,6 +669,93 @@
     }
   }
   document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+
+  function exportHistoryCSV() {
+    if (!_lastHistoryRows.length) { alert('ยังไม่มีข้อมูลให้ส่งออก (กรุณากดรีเฟรชก่อน)'); return; }
+
+    const sum = _lastHistoryRows.reduce((acc, r) => {
+      acc.income += r.income; acc.expense += r.expense; acc.deduction += r.deduction; acc.tax += r.tax; return acc;
+    }, {income:0, expense:0, deduction:0, tax:0});
+
+    const u = auth.currentUser;
+    const displayName = u?.displayName || '';
+    const email = u?.email || '';
+
+    const header = ['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี'];
+    const rows = _lastHistoryRows
+      .slice().sort((a,b)=> a.date - b.date)
+      .map(r => [r.date.toLocaleString('th-TH'), r.income, r.expense, r.deduction, r.tax]);
+
+    rows.push([]);
+    rows.push(['รวม', sum.income, sum.expense, sum.deduction, sum.tax]);
+    rows.push([]);
+    rows.push(['ผู้ยื่น', displayName]);
+    rows.push(['อีเมล', email]);
+
+    const csv = [header, ...rows].map(line =>
+      line.map(v => {
+        const s = String(v ?? '');
+        return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g,'""')}"` : s;
+      }).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    const today = toYMD(new Date()).replace(/-/g,'');
+    a.href = URL.createObjectURL(blob);
+    a.download = `TaxOnline_History_${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function exportHistoryPDF() {
+    if (!_lastHistoryRows.length) { alert('ยังไม่มีข้อมูลให้ส่งออก (กรุณากดรีเฟรชก่อน)'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+    const u = auth.currentUser;
+    const displayName = u?.displayName || '';
+    const email = u?.email || '';
+    const todayTH = new Date().toLocaleString('th-TH');
+
+    const sum = _lastHistoryRows.reduce((acc, r) => {
+      acc.income += r.income; acc.expense += r.expense; acc.deduction += r.deduction; acc.tax += r.tax; return acc;
+    }, {income:0, expense:0, deduction:0, tax:0});
+
+    doc.setFontSize(16);
+    doc.text('รายงานประวัติการคำนวณภาษี (TaxOnline)', 40, 50);
+    doc.setFontSize(11);
+    doc.text(`ผู้ออกรายงาน: ${displayName || '-'}`, 40, 72);
+    doc.text(`อีเมล: ${email || '-'}`, 40, 88);
+    doc.text(`วันที่พิมพ์: ${todayTH}`, 40, 104);
+
+    const sY = 120;
+    doc.setFontSize(12); doc.text('สรุปยอด', 40, sY);
+    doc.setFontSize(11);
+    doc.text(`รายได้รวม: ${fmtTH(sum.income)} บาท`, 40, sY+18);
+    doc.text(`รายจ่ายรวม: ${fmtTH(sum.expense)} บาท`, 40, sY+34);
+    doc.text(`ลดหย่อนรวม: ${fmtTH(sum.deduction)} บาท`, 260, sY+18);
+    doc.text(`ภาษีรวม: ${fmtTH(sum.tax)} บาท`, 260, sY+34);
+
+    const tableBody = _lastHistoryRows
+      .slice().sort((a,b)=> a.date - b.date)
+      .map(r => [r.date.toLocaleString('th-TH'), fmtTH(r.income), fmtTH(r.expense), fmtTH(r.deduction), fmtTH(r.tax)]);
+
+    doc.autoTable({
+      startY: sY + 54,
+      head: [['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี']],
+      body: tableBody,
+      headStyles: { fillColor: [59,130,246] },
+      theme: 'grid',
+      margin: { left: 40, right: 40 }
+    });
+
+    const today = toYMD(new Date()).replace(/-/g,'');
+    doc.save(`TaxOnline_History_${today}.pdf`);
+  }
+
+  document.getElementById('exportCsvBtn').addEventListener('click', exportHistoryCSV);
+  document.getElementById('exportPdfBtn').addEventListener('click', exportHistoryPDF);
 </script>
 </body>
 </html>
