@@ -897,18 +897,14 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
 
   // ---------- STATE ----------
   const defaultButtonColors = {
-    // ปุ่มหน้าแรก
     welcomeCalc:     { bg:'#ef4444', text:'#ffffff' },
     welcomeLogin:    { bg:'#2563eb', text:'#ffffff' },
-    // ปุ่มระบบ
     driveConnect:    { bg:'#16a34a', text:'#ffffff' },
     taxSubmit:       { bg:'#2563eb', text:'#ffffff' },
-    // Toolbar ประวัติ
     historyRefresh:  { bg:'#e5e7eb', text:'#111827' },
     historyCsv:      { bg:'#dbeafe', text:'#1d4ed8' },
     historyPdf:      { bg:'#ede9fe', text:'#6d28d9' },
     historyOpenFolder:{ bg:'#dcfce7', text:'#166534' },
-    // อื่น ๆ
     logoutBtn:       { bg:'#ef4444', text:'#ffffff' }
   };
 
@@ -928,13 +924,12 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       hideProfile:false,
       hideCalculator:false,
       hideHistory:false,
-      logo:null, // {driveFileId, webViewLink, embedUrl, name, mimeType}
-      // 🎯 สีปุ่มรายปุ่ม
+      logo:null,
       buttonColors: JSON.parse(JSON.stringify(defaultButtonColors))
     }
   };
 
-  // ---------- Drive helpers (ใช้ token จากโค้ดหลัก) ----------
+  // ---------- Drive helpers ----------
   async function getOrCreateDriveAssetsFolder() {
     if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found (กด "เชื่อมต่อ Google Drive" มุมขวาบนก่อน)');
     await ensureDriveToken();
@@ -996,37 +991,27 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     link.href = url;
   }
 
-  // ฟังก์ชันช่วยเซ็ตสีปุ่ม (ลบคลาส Tailwind ที่อาจชน)
   function styleButton(sel, colors, radiusPx) {
     const el = $q(sel);
     if (!el) return;
     if (colors?.bg)   el.style.backgroundColor = colors.bg;
     if (colors?.text) el.style.color = colors.text;
     if (radiusPx!=null) el.style.borderRadius = radiusPx + 'px';
-    el.classList.remove(
-      'bg-gray-100','bg-blue-50','bg-purple-50','bg-green-50',
-      'text-blue-700','text-purple-700','text-green-700',
-      'bg-pink-500','bg-pink-600','bg-blue-600','bg-blue-700',
-      'hover:bg-blue-700','hover:bg-pink-600'
-    );
+    el.classList.remove('bg-gray-100','bg-blue-50','bg-purple-50','bg-green-50','text-blue-700','text-purple-700','text-green-700');
   }
 
   function applySettings(v) {
-    // ฟอนต์
     if (v.fontUrl) injectFont(v.fontUrl);
     document.documentElement.style.setProperty('--tx-font', v.fontCssFamily || 'system-ui');
     document.body.style.fontFamily = 'var(--tx-font)';
 
-    // สีระบบ (เผื่อส่วนอื่นในอนาคต)
     document.documentElement.style.setProperty('--tx-primary', v.primaryColor || '#2563eb');
     document.documentElement.style.setProperty('--tx-accent',  v.accentColor  || '#f59e0b');
 
-    // ข้อความ
     if (v.brandTitle)   { const h=$q('header h1'); if (h) h.textContent = v.brandTitle; }
     if (v.welcomeTitle) { const h=$q('#welcomeSection h2'); if (h) h.textContent = v.welcomeTitle; }
     if (v.welcomeSubtext){ const p=$q('#welcomeSection p'); if (p) p.textContent = v.welcomeSubtext; }
 
-    // โลโก้
     const slot = ensureLogoSlot();
     const img = slot ? slot.querySelector('#siteLogo') : null;
     if (img) {
@@ -1038,11 +1023,9 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       }
     }
 
-    // โหมดมืดเริ่มต้น
     if (v.darkDefault) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
 
-    // ซ่อน/แสดงส่วนต่าง ๆ
     [
       {key:'hideWelcome',    sel:'#welcomeSection'},
       {key:'hideProfile',    sel:'#profileSection'},
@@ -1053,7 +1036,6 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       el.style.display = v[m.key] ? 'none' : '';
     });
 
-    // 🎯 เซ็ตสีปุ่มรายปุ่ม
     const bc = Object.assign({}, defaultButtonColors, v.buttonColors||{});
     const r  = v.buttonRadius ?? 12;
     styleButton('#welcomeSection [data-nav="calculator"]', bc.welcomeCalc, r);
@@ -1074,11 +1056,9 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       const snap = await ref.get();
       if (snap.exists) {
         const data = snap.data() || {};
-        // merge แบบปลอดภัยกับค่าเริ่มต้น
         state.values = Object.assign({}, state.values, data);
         state.values.buttonColors = Object.assign({}, defaultButtonColors, data.buttonColors||{});
       } else {
-        // ดึงข้อความตั้งต้นจากหน้า
         state.values.brandTitle     = ($q('header h1')?.textContent || 'TaxOnline').trim();
         state.values.welcomeTitle   = ($q('#welcomeSection h2')?.textContent || '').trim();
         state.values.welcomeSubtext = ($q('#welcomeSection p')?.textContent || '').trim();
@@ -1102,14 +1082,14 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     applySettings(state.values);
   }
 
-  // ---------- UI (เฉพาะแอดมิน) ----------
+  // ---------- UI (Admin Only) ----------
   function removeAdminUI(){
     document.getElementById('advCustomizeFab')?.remove();
     document.getElementById('advCustomizeOverlay')?.remove();
   }
 
   function mountAdminUI(){
-    if (document.getElementById('advCustomizeFab')) return; // already mounted
+    if (document.getElementById('advCustomizeFab')) return;
 
     const fab = createEl('button', {
       id:'advCustomizeFab', type:'button',
@@ -1117,17 +1097,27 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     }, '🎨 ปรับธีม');
     document.body.appendChild(fab);
 
-    // ✅ เอาตัวดัก wheel/touchmove ออก และให้ panel เลื่อนเองได้
-    const overlay = createEl('div', { id:'advCustomizeOverlay', class:'fixed inset-0 z-50 hidden', style:'background:rgba(0,0,0,.45)' });
-    const panel = createEl('div', {
-      class:'absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-2xl p-5',
-      style:'overflow-y:auto;-webkit-overflow-scrolling:touch'
+    // ✅ overlay ไม่ block สกอ — ให้สกอได้ปกติ
+    const overlay = createEl('div', {
+      id:'advCustomizeOverlay',
+      class:'fixed inset-0 z-50 hidden',
+      style:'background:rgba(0,0,0,.45)'
     });
-    panel.addEventListener('click', e=> e.stopPropagation(), true);
-    overlay.addEventListener('click', ()=> { overlay.classList.add('hidden'); document.body.style.overflow=''; });
-    panel.setAttribute('tabindex','-1');
+
+    // panel สกอได้เอง
+    const panel = createEl('div', {
+      class:'absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-2xl p-5 overflow-auto'
+    });
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
+
+    // ป้องกันคลิ้กใน panel แล้ว overlay ปิด
+    panel.addEventListener('click', e=> e.stopPropagation(), true);
+    // คลิ้กฉากดำเพื่อปิด
+    overlay.addEventListener('click', ()=>{
+      overlay.classList.add('hidden');
+      document.body.style.overflow='';
+    });
 
     panel.appendChild(createEl('h3', { class:'text-xl font-semibold mb-1 text-indigo-600' }, 'ปรับธีมขั้นสูง'));
     panel.appendChild(createEl('p',  { class:'text-xs text-gray-500 mb-4' }, 'แก้ข้อความ สี ฟอนต์ โลโก้ ซ่อน/แสดงส่วน และ “สีปุ่มรายปุ่ม” — บันทึกแล้วใช้ทันที'));
@@ -1267,19 +1257,17 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
         <button type="button" id="adv_preview" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ดูตัวอย่าง</button>
         <div class="space-x-2">
           <button type="button" id="adv_close" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ปิด</button>
-          <!-- ✅ เปลี่ยนเป็น type="button" -->
-          <button type="button" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
+          <button type="submit" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
         </div>
       </div>
       <p id="adv_msg" class="text-xs text-gray-500 mt-1"></p>
     `;
     panel.appendChild(form);
 
-    // กัน Enter ส่งฟอร์มโดยไม่ตั้งใจ
-    form.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); } });
+    // กัน submit reload หน้า
+    form.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); });
 
     function fillForm(v){
-      // ข้อความ/ธีม
       $q('#adv_brandTitle').value     = v.brandTitle   || ($q('header h1')?.textContent || 'TaxOnline');
       $q('#adv_welcomeTitle').value  = v.welcomeTitle || ($q('#welcomeSection h2')?.textContent || '');
       $q('#adv_welcomeSubtext').value= v.welcomeSubtext || ($q('#welcomeSection p')?.textContent || '');
@@ -1289,7 +1277,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       $q('#radiusVal').textContent   = v.buttonRadius ?? 12;
       $q('#adv_darkDefault').checked = !!v.darkDefault;
       $q('#adv_fontUrl').value       = v.fontUrl || '';
-      $q('#adv_fontCssFamily').value = v.fontCssFamily || 'system-ui'; // ✅ แก้ fallback
+      $q('#adv_fontCssFamily').value = v.fontCssFamily || 'system-ui';
       $q('#adv_hideWelcome').checked    = !!v.hideWelcome;
       $q('#adv_hideProfile').checked    = !!v.hideProfile;
       $q('#adv_hideCalculator').checked = !!v.hideCalculator;
@@ -1300,7 +1288,6 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
         prev.innerHTML = `<a href="${v.logo.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">โลโก้ปัจจุบัน: ${v.logo.name||'ดูไฟล์'}</a>`;
       } else prev.textContent = 'ยังไม่มีโลโก้';
 
-      // สีปุ่มรายปุ่ม
       const bc = Object.assign({}, defaultButtonColors, v.buttonColors||{});
       Object.entries(bc).forEach(([key, val])=>{
         const bgEl   = $q(`#adv_btn_${key}_bg`);
@@ -1400,13 +1387,19 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     wireTryBtn('historyOpenFolder','#openDriveFolderBtn');
     wireTryBtn('logoutBtn',       '#logoutBtn');
 
-    // ดูตัวอย่างรวมทั้งหน้า
+    // ✅ ปุ่ม "ดูตัวอย่าง"
     $q('#adv_preview').addEventListener('click', ()=>{
       applySettings(Object.assign({}, state.values, collectValues()));
       $q('#adv_msg').textContent = 'แสดงตัวอย่างแล้ว (ยังไม่บันทึก)';
     });
 
-    // บันทึก (type="button")
+    // ✅ ปุ่ม "ปิด"
+    $q('#adv_close').addEventListener('click', ()=>{
+      overlay.classList.add('hidden');
+      document.body.style.overflow='';
+    });
+
+    // ✅ ปุ่ม "บันทึก"
     $q('#adv_save').addEventListener('click', async (e)=>{
       e.preventDefault(); e.stopPropagation();
       const msg = $q('#adv_msg');
@@ -1423,9 +1416,18 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       if (!user) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
       if (ADMIN_UIDS && !ADMIN_UIDS.includes(user.uid)) { alert('คุณไม่มีสิทธิ์ปรับแต่ง'); return; }
       fillForm(state.values);
-      overlay.classList.remove('hidden'); document.body.style.overflow='hidden';
+      overlay.classList.remove('hidden');
+      document.body.style.overflow='hidden';
+      panel.focus();
     });
-    $q('#adv_close').addEventListener('click', ()=>{ overlay.classList.add('hidden'); document.body.style.overflow=''; });
+
+    // ปิดด้วย ESC
+    window.addEventListener('keydown', (e)=>{
+      if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
+        overlay.classList.add('hidden');
+        document.body.style.overflow='';
+      }
+    });
   }
 
   // ---------- BOOT ----------
@@ -1444,7 +1446,6 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
   });
 })();
 </script>
-
 
 </body>
 </html>
