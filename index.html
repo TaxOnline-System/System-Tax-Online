@@ -875,7 +875,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
 <!-- ====================== Advanced Theme Customizer (Admin Only) ====================== -->
 <script>
 (function(){
-  // ✅ เฉพาะแอดมิน UID ต่อไปนี้ที่เห็นปุ่ม “🎨 ปรับธีม” และบันทึกได้
+  // ✅ อนุญาตเฉพาะแอดมิน UID นี้
   const ADMIN_UIDS = ['oSPrvjRwNaVV4KQgbzOi3Re4Agm1'];
   const SETTINGS_DOC = { col: 'site_settings', id: 'default' };
 
@@ -916,9 +916,9 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     }
   };
 
-  // ---------- Drive helpers (ใช้ token จากโค้ดหลัก) ----------
+  // ---------- Drive helpers ----------
   async function getOrCreateDriveAssetsFolder() {
-    if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found (กด "เชื่อมต่อ Google Drive" มุมขวาบนก่อน)');
+    if (typeof ensureDriveToken !== 'function') throw new Error('โปรดกด “เชื่อมต่อ Google Drive” มุมขวาบนก่อน');
     await ensureDriveToken();
     const q = "name='TaxOnline Assets' and mimeType='application/vnd.google-apps.folder' and trashed=false";
     const search = await fetch(
@@ -939,9 +939,25 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     return { id: d.id, webViewLink: d.webViewLink };
   }
 
+  // ทำให้โลโก้เข้าถึงได้สาธารณะ (anyone with the link) เพื่อให้ผู้ใช้ทุกคนเห็น
+  async function makeFilePublic(fileId){
+    await ensureDriveToken();
+    const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions`;
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+(window.driveAccessToken||''),
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({ role:'reader', type:'anyone' })
+    });
+    // ไม่บังคับต้อง ok เสมอ — ถ้า scope/นโยบายองค์กรห้าม ก็ยังใช้งานได้เฉพาะผู้ที่เห็นไฟล์
+    return res.ok;
+  }
+
   async function uploadLogoToDrive(file) {
     if (!file) throw new Error('ยังไม่ได้เลือกไฟล์โลโก้');
-    if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found');
+    if (typeof ensureDriveToken !== 'function') throw new Error('โปรดกด “เชื่อมต่อ Google Drive” ก่อน');
     await ensureDriveToken();
     const parent = await getOrCreateDriveAssetsFolder();
     const meta = { name:file.name, mimeType:file.type||'application/octet-stream', parents:[parent.id] };
@@ -953,7 +969,11 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     });
     if (!res.ok) throw new Error('อัปโหลดโลโก้ล้มเหลว');
     const j = await res.json();
-    // สร้าง embed URL สำหรับ <img>
+
+    // พยายามตั้ง anyoneWithLink เพื่อให้แสดงผลกับทุกคน
+    await makeFilePublic(j.id).catch(()=>{});
+
+    // embed URL สำหรับ <img>
     const embedUrl = `https://drive.google.com/uc?export=view&id=${j.id}`;
     return { driveFileId: j.id, webViewLink: j.webViewLink, embedUrl, name: file.name, mimeType: file.type||null };
   }
@@ -1062,7 +1082,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     applySettings(state.values);
   }
 
-  // ---------- UI (เฉพาะแอดมิน) ----------
+  // ---------- UI (Admin only) ----------
   function removeAdminUI(){
     document.getElementById('advCustomizeFab')?.remove();
     document.getElementById('advCustomizeOverlay')?.remove();
@@ -1073,169 +1093,212 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
 
     const fab = createEl('button', {
       id:'advCustomizeFab', type:'button',
-      class:'fixed z-50 right-4 bottom-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full shadow-lg'
+      class:'fixed z-[10000] right-4 bottom-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full shadow-lg'
     }, '🎨 ปรับธีม');
     document.body.appendChild(fab);
 
-    const overlay = createEl('div', { id:'advCustomizeOverlay', class:'fixed inset-0 z-50 hidden', style:'background:rgba(0,0,0,.45)' });
-    ['wheel','touchmove'].forEach(evt=> overlay.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); }, {passive:false}));
-    const panel = createEl('div', { class:'absolute right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-2xl p-5 overflow-auto' });
-    panel.addEventListener('click', e=> e.stopPropagation(), true);
-    overlay.addEventListener('click', ()=> { overlay.classList.add('hidden'); document.body.style.overflow=''; });
-    panel.setAttribute('tabindex','-1');
+    const overlay = createEl('div', {
+      id:'advCustomizeOverlay',
+      class:'fixed inset-0 hidden',
+      style:'background:rgba(0,0,0,.45);z-index:9999;'
+    });
+    const panel = createEl('div', {
+      class:'absolute right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-2xl p-5 overflow-auto',
+      style:'z-index:10000;'
+    });
     overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
-    panel.appendChild(createEl('h3', { class:'text-xl font-semibold mb-1 text-indigo-600' }, 'ปรับธีมขั้นสูง'));
-    panel.appendChild(createEl('p',  { class:'text-xs text-gray-500 mb-4' }, 'แก้ข้อความ สี ฟอนต์ โลโก้ และซ่อน/แสดงส่วนต่าง ๆ — บันทึกแล้วใช้ทันที'));
+    // ปิด overlay ด้วยคลิกพื้นหลัง
+    overlay.addEventListener('click', (e)=>{
+      if (e.target === overlay) { overlay.classList.add('hidden'); document.body.style.overflow=''; }
+    });
+    // ปิดด้วย ESC
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
+        overlay.classList.add('hidden'); document.body.style.overflow='';
+      }
+    });
 
-    const form = createEl('form', { class:'space-y-4', novalidate:true });
-    form.innerHTML = `
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ข้อความ</legend>
-        <label class="block text-sm mb-1">ชื่อเว็บ/โลโก้ (Header)</label>
-        <input type="text" id="adv_brandTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น TaxOnline">
-        <label class="block text-sm mb-1">หัวเรื่องหน้าแรก</label>
-        <input type="text" id="adv_welcomeTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!">
-        <label class="block text-sm mb-1">คำโปรยหน้าแรก</label>
-        <textarea id="adv_welcomeSubtext" rows="3" class="w-full p-2 border rounded" placeholder="ข้อความอธิบายเว็บไซต์"></textarea>
-      </fieldset>
+    panel.innerHTML = `
+      <h3 class="text-xl font-semibold mb-1 text-indigo-600">ปรับธีมขั้นสูง</h3>
+      <p class="text-xs text-gray-500 mb-4">แก้ข้อความ สี ฟอนต์ โลโก้ และซ่อน/แสดงส่วนต่าง ๆ — บันทึกแล้วใช้ทันที</p>
 
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ธีมสี & ปุ่ม</legend>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm mb-1">สีหลัก (Primary)</label>
-            <input type="color" id="adv_primaryColor" class="w-full h-10 p-0 border rounded" value="#2563eb">
+      <form id="adv_form" class="space-y-4" novalidate>
+        <fieldset class="border rounded p-3">
+          <legend class="px-2 text-sm font-semibold">ข้อความ</legend>
+          <label class="block text-sm mb-1">ชื่อเว็บ/โลโก้ (Header)</label>
+          <input type="text" id="adv_brandTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น TaxOnline">
+          <label class="block text-sm mb-1">หัวเรื่องหน้าแรก</label>
+          <input type="text" id="adv_welcomeTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!">
+          <label class="block text-sm mb-1">คำโปรยหน้าแรก</label>
+          <textarea id="adv_welcomeSubtext" rows="3" class="w-full p-2 border rounded" placeholder="ข้อความอธิบายเว็บไซต์"></textarea>
+        </fieldset>
+
+        <fieldset class="border rounded p-3">
+          <legend class="px-2 text-sm font-semibold">ธีมสี & ปุ่ม</legend>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm mb-1">สีหลัก (Primary)</label>
+              <input type="color" id="adv_primaryColor" class="w-full h-10 p-0 border rounded" value="#2563eb">
+            </div>
+            <div>
+              <label class="block text-sm mb-1">สีรอง (Accent)</label>
+              <input type="color" id="adv_accentColor" class="w-full h-10 p-0 border rounded" value="#f59e0b">
+            </div>
           </div>
-          <div>
-            <label class="block text-sm mb-1">สีรอง (Accent)</label>
-            <input type="color" id="adv_accentColor" class="w-full h-10 p-0 border rounded" value="#f59e0b">
+          <label class="block text-sm mt-3">มุมปุ่ม (px)</label>
+          <input type="range" id="adv_buttonRadius" min="0" max="24" step="1" value="12" class="w-full">
+          <div class="text-xs text-gray-500 mt-1">ค่าปัจจุบัน: <span id="radiusVal">12</span>px</div>
+          <label class="inline-flex items-center gap-2 mt-3 cursor-pointer">
+            <input type="checkbox" id="adv_darkDefault" class="form-checkbox"> เริ่มด้วยโหมดมืด (Dark by default)
+          </label>
+        </fieldset>
+
+        <fieldset class="border rounded p-3">
+          <legend class="px-2 text-sm font-semibold">ฟอนต์</legend>
+          <label class="block text-sm mb-1">เลือกฟอนต์อย่างเร็ว</label>
+          <select id="adv_fontQuick" class="w-full p-2 border rounded mb-2">
+            <option value="">-- เลือก --</option>
+            <option value='{"url":"https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap","family":"Sarabun, sans-serif"}'>Sarabun (ไทย)</option>
+            <option value='{"url":"https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap","family":"Prompt, sans-serif"}'>Prompt (ไทย)</option>
+            <option value='{"url":"https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&display=swap","family":"Noto Sans Thai, sans-serif"}'>Noto Sans Thai</option>
+            <option value='{"url":"https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap","family":"Inter, system-ui, sans-serif"}'>Inter</option>
+          </select>
+          <div class="grid grid-cols-1 gap-2">
+            <div>
+              <label class="block text-sm mb-1">Google Fonts / CSS URL</label>
+              <input type="url" id="adv_fontUrl" class="w-full p-2 border rounded" placeholder="https://fonts.googleapis.com/...">
+            </div>
+            <div>
+              <label class="block text-sm mb-1">font-family (CSS)</label>
+              <input type="text" id="adv_fontCssFamily" class="w-full p-2 border rounded" placeholder="เช่น 'Sarabun, sans-serif'">
+            </div>
+          </div>
+          <div class="text-xs text-gray-500 mt-2">* เลือกจากรายการด้านบน หรือใส่ URL/ชื่อฟอนต์เองก็ได้</div>
+          <button type="button" id="adv_tryFont" class="mt-2 px-3 py-1 bg-gray-100 rounded hover:bg-gray-200">ลองใช้ฟอนต์ชั่วคราว</button>
+        </fieldset>
+
+        <fieldset class="border rounded p-3">
+          <legend class="px-2 text-sm font-semibold">โลโก้</legend>
+          <div class="flex items-center gap-3">
+            <input type="file" id="adv_logoFile" accept="image/*" class="text-sm">
+            <button type="button" id="adv_uploadLogo" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">อัปโหลดไป Drive</button>
+          </div>
+          <div id="adv_logoPreview" class="mt-2 text-sm text-gray-500"></div>
+          <div class="text-xs text-gray-500 mt-1">* ไฟล์จะถูกเก็บในโฟลเดอร์ "TaxOnline Assets" บน Google Drive ของคุณ</div>
+        </fieldset>
+
+        <fieldset class="border rounded p-3">
+          <legend class="px-2 text-sm font-semibold">ซ่อน/แสดง ส่วนต่าง ๆ</legend>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideWelcome"> ซ่อนหน้าแรก</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideProfile"> ซ่อนโปรไฟล์</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideCalculator"> ซ่อนคำนวณภาษี</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideHistory"> ซ่อนประวัติ</label>
+          </div>
+        </fieldset>
+
+        <div class="flex items-center justify-between pt-2">
+          <button type="button" id="adv_preview" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ดูตัวอย่าง</button>
+          <div class="space-x-2">
+            <button type="button" id="adv_close" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ปิด</button>
+            <!-- ✅ เปลี่ยนเป็น button (ไม่ใช่ submit) เพื่อกันชนกับ form -->
+            <button type="button" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
           </div>
         </div>
-        <label class="block text-sm mt-3">มุมปุ่ม (px)</label>
-        <input type="range" id="adv_buttonRadius" min="0" max="24" step="1" value="12" class="w-full">
-        <div class="text-xs text-gray-500 mt-1">ค่าปัจจุบัน: <span id="radiusVal">12</span>px</div>
-        <label class="inline-flex items-center gap-2 mt-3 cursor-pointer">
-          <input type="checkbox" id="adv_darkDefault" class="form-checkbox"> เริ่มด้วยโหมดมืด (Dark by default)
-        </label>
-      </fieldset>
-
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ฟอนต์</legend>
-        <label class="block text-sm mb-1">เลือกฟอนต์อย่างเร็ว</label>
-        <select id="adv_fontQuick" class="w-full p-2 border rounded mb-2">
-          <option value="">-- เลือก --</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap","family":"Sarabun, sans-serif"}'>Sarabun (ไทย)</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap","family":"Prompt, sans-serif"}'>Prompt (ไทย)</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&display=swap","family":"Noto Sans Thai, sans-serif"}'>Noto Sans Thai</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap","family":"Inter, system-ui, sans-serif"}'>Inter</option>
-        </select>
-        <div class="grid grid-cols-1 gap-2">
-          <div>
-            <label class="block text-sm mb-1">Google Fonts / CSS URL</label>
-            <input type="url" id="adv_fontUrl" class="w-full p-2 border rounded" placeholder="https://fonts.googleapis.com/...">
-          </div>
-          <div>
-            <label class="block text-sm mb-1">font-family (CSS)</label>
-            <input type="text" id="adv_fontCssFamily" class="w-full p-2 border rounded" placeholder="เช่น 'Sarabun, sans-serif'">
-          </div>
-        </div>
-        <div class="text-xs text-gray-500 mt-2">* เลือกจากรายการด้านบน หรือใส่ URL/ชื่อฟอนต์เองก็ได้</div>
-        <button type="button" id="adv_tryFont" class="mt-2 px-3 py-1 bg-gray-100 rounded hover:bg-gray-200">ลองใช้ฟอนต์ชั่วคราว</button>
-      </fieldset>
-
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">โลโก้</legend>
-        <div class="flex items-center gap-3">
-          <input type="file" id="adv_logoFile" accept="image/*" class="text-sm">
-          <button type="button" id="adv_uploadLogo" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">อัปโหลดไป Drive</button>
-        </div>
-        <div id="adv_logoPreview" class="mt-2 text-sm text-gray-500"></div>
-        <div class="text-xs text-gray-500 mt-1">* ไฟล์จะถูกเก็บในโฟลเดอร์ "TaxOnline Assets" บน Google Drive ของคุณ</div>
-      </fieldset>
-
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ซ่อน/แสดง ส่วนต่าง ๆ</legend>
-        <div class="grid grid-cols-2 gap-2 text-sm">
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideWelcome"> ซ่อนหน้าแรก</label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideProfile"> ซ่อนโปรไฟล์</label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideCalculator"> ซ่อนคำนวณภาษี</label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideHistory"> ซ่อนประวัติ</label>
-        </div>
-      </fieldset>
-
-      <div class="flex items-center justify-between pt-2">
-        <button type="button" id="adv_preview" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ดูตัวอย่าง</button>
-        <div class="space-x-2">
-          <button type="button" id="adv_close" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ปิด</button>
-          <button type="submit" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
-        </div>
-      </div>
-      <p id="adv_msg" class="text-xs text-gray-500 mt-1"></p>
+        <p id="adv_msg" class="text-xs text-gray-500 mt-1"></p>
+      </form>
     `;
-    panel.appendChild(form);
 
-    // ป้องกัน submit หน้า
-    form.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); });
+    // กัน submit ทั้งหน้า
+    panel.querySelector('#adv_form').addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); });
 
     function fillForm(v){
-      document.getElementById('adv_brandTitle').value    = v.brandTitle   || ($q('header h1')?.textContent || 'TaxOnline');
-      document.getElementById('adv_welcomeTitle').value  = v.welcomeTitle || ($q('#welcomeSection h2')?.textContent || '');
-      document.getElementById('adv_welcomeSubtext').value= v.welcomeSubtext || ($q('#welcomeSection p')?.textContent || '');
-      document.getElementById('adv_primaryColor').value  = v.primaryColor || '#2563eb';
-      document.getElementById('adv_accentColor').value   = v.accentColor  || '#f59e0b';
-      document.getElementById('adv_buttonRadius').value  = v.buttonRadius ?? 12;
-      document.getElementById('radiusVal').textContent   = v.buttonRadius ?? 12;
-      document.getElementById('adv_darkDefault').checked = !!v.darkDefault;
-      document.getElementById('adv_fontUrl').value       = v.fontUrl || '';
-      document.getElementById('adv_fontCssFamily').value = v.fontCssFamily || 'system-ui';
-      document.getElementById('adv_hideWelcome').checked    = !!v.hideWelcome;
-      document.getElementById('adv_hideProfile').checked    = !!v.hideProfile;
-      document.getElementById('adv_hideCalculator').checked = !!v.hideCalculator;
-      document.getElementById('adv_hideHistory').checked    = !!v.hideHistory;
+      panel.querySelector('#adv_brandTitle').value     = v.brandTitle   || ($q('header h1')?.textContent || 'TaxOnline');
+      panel.querySelector('#adv_welcomeTitle').value   = v.welcomeTitle || ($q('#welcomeSection h2')?.textContent || '');
+      panel.querySelector('#adv_welcomeSubtext').value = v.welcomeSubtext || ($q('#welcomeSection p')?.textContent || '');
+      panel.querySelector('#adv_primaryColor').value   = v.primaryColor || '#2563eb';
+      panel.querySelector('#adv_accentColor').value    = v.accentColor  || '#f59e0b';
+      panel.querySelector('#adv_buttonRadius').value   = v.buttonRadius ?? 12;
+      panel.querySelector('#radiusVal').textContent    = v.buttonRadius ?? 12;
+      panel.querySelector('#adv_darkDefault').checked  = !!v.darkDefault;
+      panel.querySelector('#adv_fontUrl').value        = v.fontUrl || '';
+      panel.querySelector('#adv_fontCssFamily').value  = v.fontCssFamily || 'system-ui';
+      panel.querySelector('#adv_hideWelcome').checked    = !!v.hideWelcome;
+      panel.querySelector('#adv_hideProfile').checked    = !!v.hideProfile;
+      panel.querySelector('#adv_hideCalculator').checked = !!v.hideCalculator;
+      panel.querySelector('#adv_hideHistory').checked    = !!v.hideHistory;
 
-      const prev = document.getElementById('adv_logoPreview');
+      const prev = panel.querySelector('#adv_logoPreview');
       if (v.logo && v.logo.webViewLink) {
         prev.innerHTML = `<a href="${v.logo.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">โลโก้ปัจจุบัน: ${v.logo.name||'ดูไฟล์'}</a>`;
       } else prev.textContent = 'ยังไม่มีโลโก้';
     }
 
-    document.getElementById('adv_tryFont').addEventListener('click', ()=>{
-      const url = document.getElementById('adv_fontUrl').value.trim();
-      const fam = document.getElementById('adv_fontCssFamily').value.trim() || 'system-ui';
-      applySettings(Object.assign({}, state.values, { fontUrl:url, fontCssFamily:fam }));
-      document.getElementById('adv_msg').textContent = 'ลองฟอนต์แล้ว (ยังไม่บันทึก)';
+    function collectValues(){
+      return {
+        brandTitle: panel.querySelector('#adv_brandTitle').value.trim(),
+        welcomeTitle: panel.querySelector('#adv_welcomeTitle').value.trim(),
+        welcomeSubtext: panel.querySelector('#adv_welcomeSubtext').value.trim(),
+        primaryColor: panel.querySelector('#adv_primaryColor').value,
+        accentColor:  panel.querySelector('#adv_accentColor').value,
+        buttonRadius: parseInt(panel.querySelector('#adv_buttonRadius').value||'12',10),
+        darkDefault:  panel.querySelector('#adv_darkDefault').checked,
+        fontUrl:      panel.querySelector('#adv_fontUrl').value.trim(),
+        fontCssFamily:panel.querySelector('#adv_fontCssFamily').value.trim()||'system-ui',
+        hideWelcome:    panel.querySelector('#adv_hideWelcome').checked,
+        hideProfile:    panel.querySelector('#adv_hideProfile').checked,
+        hideCalculator: panel.querySelector('#adv_hideCalculator').checked,
+        hideHistory:    panel.querySelector('#adv_hideHistory').checked,
+        logo: state.values.logo || null
+      };
+    }
+
+    // events
+    panel.querySelector('#adv_buttonRadius').addEventListener('input', e=>{
+      panel.querySelector('#radiusVal').textContent = e.target.value;
     });
 
-    document.getElementById('adv_uploadLogo').addEventListener('click', async ()=>{
-      const f = document.getElementById('adv_logoFile').files[0];
+    panel.querySelector('#adv_tryFont').addEventListener('click', ()=>{
+      const url = panel.querySelector('#adv_fontUrl').value.trim();
+      const fam = panel.querySelector('#adv_fontCssFamily').value.trim() || 'system-ui';
+      applySettings(Object.assign({}, state.values, { fontUrl:url, fontCssFamily:fam }));
+      panel.querySelector('#adv_msg').textContent = 'ลองฟอนต์แล้ว (ยังไม่บันทึก)';
+    });
+
+    panel.querySelector('#adv_uploadLogo').addEventListener('click', async ()=>{
+      const f = panel.querySelector('#adv_logoFile').files[0];
       if (!f) { alert('เลือกไฟล์โลโก้ก่อน'); return; }
-      const msg = document.getElementById('adv_msg');
+      const msg = panel.querySelector('#adv_msg');
       try {
         msg.textContent = 'กำลังอัปโหลดโลโก้...';
         const res = await uploadLogoToDrive(f);
         state.values.logo = res;
         applySettings(state.values);
-        const prev = document.getElementById('adv_logoPreview');
-        prev.innerHTML = `<a href="${res.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">อัปโหลดแล้ว: ${res.name}</a>`;
+        panel.querySelector('#adv_logoPreview').innerHTML =
+          `<a href="${res.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">อัปโหลดแล้ว: ${res.name}</a>`;
         msg.textContent = 'อัปโหลดสำเร็จ (อย่าลืมกด "บันทึก")';
       } catch(e){ msg.textContent = 'อัปโหลดล้มเหลว: ' + (e.message||e); }
     });
 
-    document.getElementById('adv_preview').addEventListener('click', ()=>{
+    panel.querySelector('#adv_preview').addEventListener('click', ()=>{
       applySettings(Object.assign({}, state.values, collectValues()));
-      document.getElementById('adv_msg').textContent = 'แสดงตัวอย่างแล้ว (ยังไม่บันทึก)';
+      panel.querySelector('#adv_msg').textContent = 'แสดงตัวอย่างแล้ว (ยังไม่บันทึก)';
     });
 
-    document.getElementById('adv_save').addEventListener('click', async (e)=>{
-      e.preventDefault(); e.stopPropagation();
-      const msg = document.getElementById('adv_msg');
+    panel.querySelector('#adv_close').addEventListener('click', ()=>{
+      overlay.classList.add('hidden'); document.body.style.overflow='';
+    });
+
+    panel.querySelector('#adv_save').addEventListener('click', async ()=>{
+      const msg = panel.querySelector('#adv_msg');
       try {
+        msg.textContent = 'กำลังบันทึก...';
         await saveSettings(collectValues());
-        msg.textContent = 'บันทึกสำเร็จ ✔'; msg.className='text-xs text-green-600';
+        msg.textContent = 'บันทึกสำเร็จ ✔';
         overlay.classList.add('hidden'); document.body.style.overflow='';
-      } catch(err){ msg.textContent = (err.message||'บันทึกล้มเหลว'); msg.className='text-xs text-red-600'; }
+      } catch(err){ msg.textContent = (err.message||'บันทึกล้มเหลว'); }
     });
 
     fab.addEventListener('click', ()=>{
@@ -1245,35 +1308,6 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       fillForm(state.values);
       overlay.classList.remove('hidden'); document.body.style.overflow='hidden';
     });
-    document.getElementById('adv_close').addEventListener('click', ()=>{ overlay.classList.add('hidden'); document.body.style.overflow=''; });
-
-    document.getElementById('adv_fontQuick').addEventListener('change', e=>{
-      const val = e.target.value; if (!val) return;
-      try {
-        const o = JSON.parse(val);
-        document.getElementById('adv_fontUrl').value = o.url || '';
-        document.getElementById('adv_fontCssFamily').value = o.family || '';
-      } catch {}
-    });
-
-    function collectValues(){
-      return {
-        brandTitle: document.getElementById('adv_brandTitle').value.trim(),
-        welcomeTitle: document.getElementById('adv_welcomeTitle').value.trim(),
-        welcomeSubtext: document.getElementById('adv_welcomeSubtext').value.trim(),
-        primaryColor: document.getElementById('adv_primaryColor').value,
-        accentColor:  document.getElementById('adv_accentColor').value,
-        buttonRadius: parseInt(document.getElementById('adv_buttonRadius').value||'12',10),
-        darkDefault:  document.getElementById('adv_darkDefault').checked,
-        fontUrl:      document.getElementById('adv_fontUrl').value.trim(),
-        fontCssFamily:document.getElementById('adv_fontCssFamily').value.trim()||'system-ui',
-        hideWelcome:    document.getElementById('adv_hideWelcome').checked,
-        hideProfile:    document.getElementById('adv_hideProfile').checked,
-        hideCalculator: document.getElementById('adv_hideCalculator').checked,
-        hideHistory:    document.getElementById('adv_hideHistory').checked,
-        logo: state.values.logo || null
-      };
-    }
   }
 
   // ---------- BOOT ----------
