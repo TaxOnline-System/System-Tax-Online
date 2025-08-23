@@ -893,5 +893,434 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
   });
 })();
 </script>
+  <script>
+/* =========================================================================
+   TaxOnline: Advanced Theme Customizer (compatible with Drive version)
+   - แก้ข้อความ สี ฟอนต์ โลโก้ (อัปโหลดไป Google Drive) ซ่อน/แสดงส่วนต่าง ๆ
+   - เก็บค่าที่ Firestore: site_settings/default
+   - ใช้ ensureDriveToken() / driveAccessToken ของโค้ดเดิมได้ทันที
+   ========================================================================= */
+(function(){
+  // ---- จำกัดสิทธิ์: ใส่ UID ถ้าต้องการให้เฉพาะแอดมินแก้ธีมได้ (เว้น null เพื่อให้ผู้ใช้ที่ล็อกอินทำได้) ----
+  const ADMIN_UIDS = null; // เช่น ['abcd1234UID'];  null = อนุญาตผู้ใช้ที่ล็อกอินทุกคน
+
+  const SETTINGS_DOC = { col: 'site_settings', id: 'default' };
+
+  // ========= Utilities =========
+  const $q = s => document.querySelector(s);
+  function createEl(tag, attrs={}, children=[]) {
+    const el = document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v])=>{
+      if (k==='class') el.className = v;
+      else if (k==='style') el.style.cssText = v;
+      else el.setAttribute(k,v);
+    });
+    (Array.isArray(children)?children:[children]).forEach(c=>{
+      if (c==null) return;
+      if (typeof c==='string') el.appendChild(document.createTextNode(c));
+      else el.appendChild(c);
+    });
+    return el;
+  }
+
+  // ========= Drive helpers (พึ่งพา ensureDriveToken() และ driveAccessToken จากโค้ดเดิม) =========
+  async function getOrCreateDriveAssetsFolder() {
+    if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found (โปรดกดเชื่อมต่อ Google Drive ด้านขวาบนก่อน)');
+    await ensureDriveToken();
+    const q = "name='TaxOnline Assets' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    const search = await fetch(
+      'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,webViewLink)',
+      { headers: { 'Authorization': 'Bearer ' + (window.driveAccessToken || '') } }
+    );
+    if (search.ok) {
+      const j = await search.json();
+      if (j.files && j.files.length) return { id: j.files[0].id, webViewLink: j.files[0].webViewLink };
+    }
+    // create
+    const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+(window.driveAccessToken||''), 'Content-Type':'application/json' },
+      body: JSON.stringify({ name:'TaxOnline Assets', mimeType:'application/vnd.google-apps.folder' })
+    });
+    if (!res.ok) throw new Error('สร้างโฟลเดอร์ Assets ไม่สำเร็จ');
+    const d = await res.json();
+    return { id: d.id, webViewLink: d.webViewLink };
+  }
+
+  async function uploadLogoToDrive(file) {
+    if (!file) throw new Error('ยังไม่ได้เลือกไฟล์โลโก้');
+    if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found');
+    await ensureDriveToken();
+    const parent = await getOrCreateDriveAssetsFolder();
+    const meta = { name:file.name, mimeType:file.type||'application/octet-stream', parents:[parent.id] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type:'application/json' }));
+    form.append('file', file);
+    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+      method:'POST', headers:{ 'Authorization':'Bearer '+(window.driveAccessToken||'') }, body: form
+    });
+    if (!res.ok) throw new Error('อัปโหลดโลโก้ล้มเหลว');
+    const j = await res.json();
+    return { driveFileId: j.id, webViewLink: j.webViewLink, name: file.name, mimeType: file.type||null };
+  }
+
+  // ========= State =========
+  const state = {
+    loaded: false,
+    values: {
+      brandTitle: '',
+      welcomeTitle: '',
+      welcomeSubtext: '',
+      primaryColor: '#2563eb',
+      accentColor:  '#f59e0b',
+      buttonRadius: 12,
+      darkDefault: false,
+      fontUrl: '',
+      fontCssFamily: 'system-ui',
+      // ซ่อน/แสดง
+      hideWelcome: false,
+      hideProfile: false,
+      hideCalculator: false,
+      hideHistory: false,
+      // โลโก้
+      logo: null // {driveFileId, webViewLink, name, mimeType}
+    }
+  };
+
+  // ========= Apply theme to page =========
+  function ensureLogoSlot() {
+    let slot = document.getElementById('logoSlot');
+    if (slot) return slot;
+    const hdr = document.querySelector('header .max-w-6xl .flex.items-center');
+    if (!hdr) return null;
+    slot = createEl('div', { id:'logoSlot', class:'flex items-center gap-2' });
+    const img = createEl('img', { id:'siteLogo', alt:'Logo', class:'h-8 w-8 rounded-lg hidden' });
+    slot.appendChild(img);
+    const h1 = hdr.querySelector('h1');
+    if (h1) { hdr.insertBefore(slot, h1); slot.appendChild(h1); } else { hdr.prepend(slot); }
+    return slot;
+  }
+
+  function injectFont(url) {
+    if (!url) return;
+    let link = document.getElementById('customFontLink');
+    if (!link) { link = document.createElement('link'); link.id='customFontLink'; link.rel='stylesheet'; document.head.appendChild(link); }
+    link.href = url;
+  }
+
+  function applySettings(v) {
+    // font
+    if (v.fontUrl) injectFont(v.fontUrl);
+    document.documentElement.style.setProperty('--tx-font', v.fontCssFamily || 'system-ui');
+    document.body.style.fontFamily = 'var(--tx-font)';
+
+    // colors
+    document.documentElement.style.setProperty('--tx-primary', v.primaryColor || '#2563eb');
+    document.documentElement.style.setProperty('--tx-accent',  v.accentColor  || '#f59e0b');
+
+    // buttons (หลัก)
+    ['#welcomeSection [data-nav="calculator"]', '#welcomeLoginBtn', '#taxForm button[type="submit"]', '#driveConnectBtn']
+      .forEach(sel=>{
+        const el = $q(sel); if (!el) return;
+        el.style.backgroundColor = 'var(--tx-primary)';
+        el.style.borderColor     = 'var(--tx-primary)';
+        el.style.color           = '#fff';
+        el.style.borderRadius    = (v.buttonRadius||12)+'px';
+      });
+
+    // ปุ่มรอง (history toolbar)
+    ['#downloadCsvBtn','#downloadPdfBtn','#openDriveFolderBtn'].forEach(sel=>{
+      const el = $q(sel); if (!el) return;
+      el.style.backgroundColor = 'var(--tx-accent)'; el.style.color = '#1f2937';
+      el.style.borderRadius = (v.buttonRadius||12)+'px';
+    });
+
+    // dark default
+    if (v.darkDefault) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+
+    // texts
+    if (v.brandTitle)   { const h=$q('header h1'); if (h) h.textContent = v.brandTitle; }
+    if (v.welcomeTitle) { const h=$q('#welcomeSection h2'); if (h) h.textContent = v.welcomeTitle; }
+    if (v.welcomeSubtext){ const p=$q('#welcomeSection p'); if (p) p.textContent = v.welcomeSubtext; }
+
+    // logo
+    const slot = ensureLogoSlot();
+    const img = slot ? slot.querySelector('#siteLogo') : null;
+    if (img) {
+      if (v.logo && v.logo.webViewLink) { img.src = v.logo.webViewLink; img.classList.remove('hidden'); }
+      else { img.classList.add('hidden'); img.removeAttribute('src'); }
+    }
+
+    // visibility
+    [
+      {key:'hideWelcome',    sel:'#welcomeSection'},
+      {key:'hideProfile',    sel:'#profileSection'},
+      {key:'hideCalculator', sel:'#calculatorSection'},
+      {key:'hideHistory',    sel:'#historySection'}
+    ].forEach(m=>{
+      const el = $q(m.sel); if (!el) return;
+      el.style.display = v[m.key] ? 'none' : '';
+    });
+  }
+
+  // ========= Firestore I/O =========
+  async function loadSettings() {
+    try {
+      const ref = firebase.firestore().collection(SETTINGS_DOC.col).doc(SETTINGS_DOC.id);
+      const snap = await ref.get();
+      if (snap.exists) {
+        state.values = Object.assign(state.values, snap.data() || {});
+      } else {
+        // defaults from current page
+        state.values.brandTitle   = ($q('header h1')?.textContent || 'TaxOnline').trim();
+        state.values.welcomeTitle = ($q('#welcomeSection h2')?.textContent || '').trim();
+        state.values.welcomeSubtext = ($q('#welcomeSection p')?.textContent || '').trim();
+      }
+      applySettings(state.values);
+      state.loaded = true;
+    } catch (e) { console.error('load settings failed:', e); }
+  }
+
+  async function saveSettings(values) {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อน');
+    if (ADMIN_UIDS && !ADMIN_UIDS.includes(user.uid)) throw new Error('คุณไม่มีสิทธิ์ปรับแต่ง');
+
+    const payload = Object.assign({}, values, {
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: user.uid
+    });
+    await firebase.firestore().collection(SETTINGS_DOC.col).doc(SETTINGS_DOC.id).set(payload, { merge:true });
+    state.values = Object.assign(state.values, values);
+    applySettings(state.values);
+  }
+
+  // ========= UI (floating button + panel) =========
+  function mountUI(){
+    // FAB
+    const fab = createEl('button', {
+      id:'advCustomizeFab', type:'button',
+      class:'fixed z-50 right-4 bottom-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full shadow-lg'
+    }, '🎨 ปรับธีม');
+    document.body.appendChild(fab);
+
+    // overlay
+    const overlay = createEl('div', { id:'advCustomizeOverlay', class:'fixed inset-0 z-50 hidden', style:'background:rgba(0,0,0,.45)' });
+    // กัน scroll/backdrop
+    ['wheel','touchmove'].forEach(evt=> overlay.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); }, {passive:false}));
+    const panel = createEl('div', { class:'absolute right-0 top-0 h-full w-full sm:w-[480px] bg-white shadow-2xl p-5 overflow-auto' });
+    panel.addEventListener('click', e=> e.stopPropagation(), true);
+    overlay.addEventListener('click', ()=> { overlay.classList.add('hidden'); document.body.style.overflow=''; });
+    panel.setAttribute('tabindex','-1');
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    // content
+    panel.appendChild(createEl('h3', { class:'text-xl font-semibold mb-1 text-indigo-600' }, 'ปรับธีมขั้นสูง'));
+    panel.appendChild(createEl('p',  { class:'text-xs text-gray-500 mb-4' }, 'แก้ข้อความ สี ฟอนต์ โลโก้ และซ่อน/แสดงส่วนต่าง ๆ — บันทึกแล้วใช้ทันที'));
+
+    const form = createEl('form', { class:'space-y-4', novalidate:true });
+    form.innerHTML = `
+      <fieldset class="border rounded p-3">
+        <legend class="px-2 text-sm font-semibold">ข้อความ</legend>
+        <label class="block text-sm mb-1">ชื่อเว็บ/โลโก้ (Header)</label>
+        <input type="text" id="adv_brandTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น TaxOnline">
+        <label class="block text-sm mb-1">หัวเรื่องหน้าแรก</label>
+        <input type="text" id="adv_welcomeTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!">
+        <label class="block text-sm mb-1">คำโปรยหน้าแรก</label>
+        <textarea id="adv_welcomeSubtext" rows="3" class="w-full p-2 border rounded" placeholder="ข้อความอธิบายเว็บไซต์"></textarea>
+      </fieldset>
+
+      <fieldset class="border rounded p-3">
+        <legend class="px-2 text-sm font-semibold">ธีมสี & ปุ่ม</legend>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm mb-1">สีหลัก (Primary)</label>
+            <input type="color" id="adv_primaryColor" class="w-full h-10 p-0 border rounded" value="#2563eb">
+          </div>
+          <div>
+            <label class="block text-sm mb-1">สีรอง (Accent)</label>
+            <input type="color" id="adv_accentColor" class="w-full h-10 p-0 border rounded" value="#f59e0b">
+          </div>
+        </div>
+        <label class="block text-sm mt-3">มุมปุ่ม (px)</label>
+        <input type="range" id="adv_buttonRadius" min="0" max="24" step="1" value="12" class="w-full">
+        <div class="text-xs text-gray-500 mt-1">ค่าปัจจุบัน: <span id="radiusVal">12</span>px</div>
+        <label class="inline-flex items-center gap-2 mt-3 cursor-pointer">
+          <input type="checkbox" id="adv_darkDefault" class="form-checkbox"> เริ่มด้วยโหมดมืด (Dark by default)
+        </label>
+      </fieldset>
+
+      <fieldset class="border rounded p-3">
+        <legend class="px-2 text-sm font-semibold">ฟอนต์</legend>
+        <label class="block text-sm mb-1">เลือกฟอนต์อย่างเร็ว</label>
+        <select id="adv_fontQuick" class="w-full p-2 border rounded mb-2">
+          <option value="">-- เลือก --</option>
+          <option value='{"url":"https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap","family":"Sarabun, sans-serif"}'>Sarabun (ไทย)</option>
+          <option value='{"url":"https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap","family":"Prompt, sans-serif"}'>Prompt (ไทย)</option>
+          <option value='{"url":"https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&display=swap","family":"Noto Sans Thai, sans-serif"}'>Noto Sans Thai</option>
+          <option value='{"url":"https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap","family":"Inter, system-ui, sans-serif"}'>Inter</option>
+        </select>
+        <div class="grid grid-cols-1 gap-2">
+          <div>
+            <label class="block text-sm mb-1">Google Fonts / CSS URL</label>
+            <input type="url" id="adv_fontUrl" class="w-full p-2 border rounded" placeholder="https://fonts.googleapis.com/...">
+          </div>
+          <div>
+            <label class="block text-sm mb-1">font-family (CSS)</label>
+            <input type="text" id="adv_fontCssFamily" class="w-full p-2 border rounded" placeholder="เช่น 'Sarabun, sans-serif'">
+          </div>
+        </div>
+        <div class="text-xs text-gray-500 mt-2">* เลือกจากรายการด้านบน หรือใส่ URL/ชื่อฟอนต์เองก็ได้</div>
+        <button type="button" id="adv_tryFont" class="mt-2 px-3 py-1 bg-gray-100 rounded hover:bg-gray-200">ลองใช้ฟอนต์ชั่วคราว</button>
+      </fieldset>
+
+      <fieldset class="border rounded p-3">
+        <legend class="px-2 text-sm font-semibold">โลโก้</legend>
+        <div class="flex items-center gap-3">
+          <input type="file" id="adv_logoFile" accept="image/*" class="text-sm">
+          <button type="button" id="adv_uploadLogo" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">อัปโหลดไป Drive</button>
+        </div>
+        <div id="adv_logoPreview" class="mt-2 text-sm text-gray-500"></div>
+        <div class="text-xs text-gray-500 mt-1">* ไฟล์จะถูกเก็บในโฟลเดอร์ "TaxOnline Assets" บน Google Drive ของคุณ</div>
+      </fieldset>
+
+      <fieldset class="border rounded p-3">
+        <legend class="px-2 text-sm font-semibold">ซ่อน/แสดง ส่วนต่าง ๆ</legend>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideWelcome"> ซ่อนหน้าแรก</label>
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideProfile"> ซ่อนโปรไฟล์</label>
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideCalculator"> ซ่อนคำนวณภาษี</label>
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideHistory"> ซ่อนประวัติ</label>
+        </div>
+      </fieldset>
+
+      <div class="flex items-center justify-between pt-2">
+        <button type="button" id="adv_preview" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ดูตัวอย่าง</button>
+        <div class="space-x-2">
+          <button type="button" id="adv_close" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ปิด</button>
+          <button type="submit" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
+        </div>
+      </div>
+      <p id="adv_msg" class="text-xs text-gray-500 mt-1"></p>
+    `;
+    panel.appendChild(form);
+
+    // กัน submit ทั้งหน้า + กัน Enter ส่งฟอร์ม
+    form.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); });
+    form.addEventListener('keydown', e=>{ if (e.key==='Enter' && e.target.tagName==='INPUT') e.preventDefault(); });
+
+    // Prefill
+    function fillForm(v){
+      document.getElementById('adv_brandTitle').value    = v.brandTitle   || ($q('header h1')?.textContent || 'TaxOnline');
+      document.getElementById('adv_welcomeTitle').value  = v.welcomeTitle || ($q('#welcomeSection h2')?.textContent || '');
+      document.getElementById('adv_welcomeSubtext').value= v.welcomeSubtext || ($q('#welcomeSection p')?.textContent || '');
+      document.getElementById('adv_primaryColor').value  = v.primaryColor || '#2563eb';
+      document.getElementById('adv_accentColor').value   = v.accentColor  || '#f59e0b';
+      document.getElementById('adv_buttonRadius').value  = v.buttonRadius ?? 12;
+      document.getElementById('radiusVal').textContent   = v.buttonRadius ?? 12;
+      document.getElementById('adv_darkDefault').checked = !!v.darkDefault;
+      document.getElementById('adv_fontUrl').value       = v.fontUrl || '';
+      document.getElementById('adv_fontCssFamily').value = v.fontCssFamily || 'system-ui';
+      document.getElementById('adv_hideWelcome').checked    = !!v.hideWelcome;
+      document.getElementById('adv_hideProfile').checked    = !!v.hideProfile;
+      document.getElementById('adv_hideCalculator').checked = !!v.hideCalculator;
+      document.getElementById('adv_hideHistory').checked    = !!v.hideHistory;
+
+      const prev = document.getElementById('adv_logoPreview');
+      if (v.logo && v.logo.webViewLink) {
+        prev.innerHTML = `<a href="${v.logo.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">โลโก้ปัจจุบัน: ${v.logo.name||'ดูไฟล์'}</a>`;
+      } else prev.textContent = 'ยังไม่มีโลโก้';
+    }
+
+    // events
+    document.getElementById('adv_tryFont').addEventListener('click', ()=>{
+      const url = document.getElementById('adv_fontUrl').value.trim();
+      const fam = document.getElementById('adv_fontCssFamily').value.trim() || 'system-ui';
+      applySettings(Object.assign({}, state.values, { fontUrl:url, fontCssFamily:fam }));
+      document.getElementById('adv_msg').textContent = 'ลองฟอนต์แล้ว (ยังไม่บันทึก)';
+    });
+
+    document.getElementById('adv_uploadLogo').addEventListener('click', async ()=>{
+      const f = document.getElementById('adv_logoFile').files[0];
+      if (!f) { alert('เลือกไฟล์โลโก้ก่อน'); return; }
+      const msg = document.getElementById('adv_msg');
+      try {
+        msg.textContent = 'กำลังอัปโหลดโลโก้...';
+        const res = await uploadLogoToDrive(f);
+        state.values.logo = res;
+        applySettings(state.values);
+        const prev = document.getElementById('adv_logoPreview');
+        prev.innerHTML = `<a href="${res.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">อัปโหลดแล้ว: ${res.name}</a>`;
+        msg.textContent = 'อัปโหลดสำเร็จ (อย่าลืมกด "บันทึก")';
+      } catch(e){ msg.textContent = 'อัปโหลดล้มเหลว: ' + (e.message||e); }
+    });
+
+    document.getElementById('adv_preview').addEventListener('click', ()=>{
+      applySettings(Object.assign({}, state.values, collectValues()));
+      document.getElementById('adv_msg').textContent = 'แสดงตัวอย่างแล้ว (ยังไม่บันทึก)';
+    });
+
+    document.getElementById('adv_save').addEventListener('click', async (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      const msg = document.getElementById('adv_msg');
+      try {
+        await saveSettings(collectValues());
+        msg.textContent = 'บันทึกสำเร็จ ✔'; msg.className='text-xs text-green-600';
+        overlay.classList.add('hidden'); document.body.style.overflow='';
+      } catch(err){ msg.textContent = (err.message||'บันทึกล้มเหลว'); msg.className='text-xs text-red-600'; }
+    });
+
+    // open/close
+    fab.addEventListener('click', ()=>{
+      const user = firebase.auth().currentUser;
+      if (!user) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
+      if (ADMIN_UIDS && !ADMIN_UIDS.includes(user.uid)) { alert('คุณไม่มีสิทธิ์ปรับแต่ง'); return; }
+      fillForm(state.values);
+      overlay.classList.remove('hidden'); document.body.style.overflow='hidden';
+    });
+    document.getElementById('adv_close').addEventListener('click', ()=>{ overlay.classList.add('hidden'); document.body.style.overflow=''; });
+
+    // quick fonts
+    document.getElementById('adv_fontQuick').addEventListener('change', e=>{
+      const val = e.target.value; if (!val) return;
+      try {
+        const o = JSON.parse(val);
+        document.getElementById('adv_fontUrl').value = o.url || '';
+        document.getElementById('adv_fontCssFamily').value = o.family || '';
+      } catch {}
+    });
+
+    function collectValues(){
+      return {
+        brandTitle: document.getElementById('adv_brandTitle').value.trim(),
+        welcomeTitle: document.getElementById('adv_welcomeTitle').value.trim(),
+        welcomeSubtext: document.getElementById('adv_welcomeSubtext').value.trim(),
+        primaryColor: document.getElementById('adv_primaryColor').value,
+        accentColor:  document.getElementById('adv_accentColor').value,
+        buttonRadius: parseInt(document.getElementById('adv_buttonRadius').value||'12',10),
+        darkDefault:  document.getElementById('adv_darkDefault').checked,
+        fontUrl:      document.getElementById('adv_fontUrl').value.trim(),
+        fontCssFamily:document.getElementById('adv_fontCssFamily').value.trim()||'system-ui',
+        hideWelcome:    document.getElementById('adv_hideWelcome').checked,
+        hideProfile:    document.getElementById('adv_hideProfile').checked,
+        hideCalculator: document.getElementById('adv_hideCalculator').checked,
+        hideHistory:    document.getElementById('adv_hideHistory').checked,
+        logo: state.values.logo || null
+      };
+    }
+  }
+
+  // ========= boot =========
+  const boot = ()=>{ loadSettings().then(mountUI); };
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  // เปลี่ยนผู้ใช้ → ดึงธีมใหม่ทันที
+  firebase.auth().onAuthStateChanged(()=>{ if (state.loaded) loadSettings(); });
+})();
+</script>
+
 </body>
 </html>
