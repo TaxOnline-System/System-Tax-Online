@@ -898,17 +898,17 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
   // ---------- STATE ----------
   const defaultButtonColors = {
     // ปุ่มหน้าแรก
-    welcomeCalc:     { bg:'#ef4444', text:'#ffffff' }, // เดิมคือปุ่มชมพู -> ใช้แดงสดเป็นค่าตั้งต้น
-    welcomeLogin:    { bg:'#2563eb', text:'#ffffff' }, // น้ำเงิน
+    welcomeCalc:     { bg:'#ef4444', text:'#ffffff' },
+    welcomeLogin:    { bg:'#2563eb', text:'#ffffff' },
     // ปุ่มระบบ
-    driveConnect:    { bg:'#16a34a', text:'#ffffff' }, // เขียว
-    taxSubmit:       { bg:'#2563eb', text:'#ffffff' }, // น้ำเงิน
+    driveConnect:    { bg:'#16a34a', text:'#ffffff' },
+    taxSubmit:       { bg:'#2563eb', text:'#ffffff' },
     // Toolbar ประวัติ
-    historyRefresh:  { bg:'#e5e7eb', text:'#111827' }, // เทาอ่อน
-    historyCsv:      { bg:'#dbeafe', text:'#1d4ed8' }, // น้ำเงินอ่อน
-    historyPdf:      { bg:'#ede9fe', text:'#6d28d9' }, // ม่วงอ่อน
-    historyOpenFolder:{ bg:'#dcfce7', text:'#166534' }, // เขียวอ่อน
-    // อื่น ๆ (ทางเลือก)
+    historyRefresh:  { bg:'#e5e7eb', text:'#111827' },
+    historyCsv:      { bg:'#dbeafe', text:'#1d4ed8' },
+    historyPdf:      { bg:'#ede9fe', text:'#6d28d9' },
+    historyOpenFolder:{ bg:'#dcfce7', text:'#166534' },
+    // อื่น ๆ
     logoutBtn:       { bg:'#ef4444', text:'#ffffff' }
   };
 
@@ -918,7 +918,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       brandTitle:'',
       welcomeTitle:'',
       welcomeSubtext:'',
-      primaryColor:'#2563eb', // ยังเก็บไว้ เผื่อใช้กับองค์ประกอบอื่น
+      primaryColor:'#2563eb',
       accentColor:'#f59e0b',
       buttonRadius:12,
       darkDefault:false,
@@ -996,15 +996,19 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     link.href = url;
   }
 
-  // ฟังก์ชันช่วยเซ็ตสีปุ่ม
+  // ฟังก์ชันช่วยเซ็ตสีปุ่ม (ลบคลาส Tailwind ที่อาจชน)
   function styleButton(sel, colors, radiusPx) {
     const el = $q(sel);
     if (!el) return;
     if (colors?.bg)   el.style.backgroundColor = colors.bg;
     if (colors?.text) el.style.color = colors.text;
     if (radiusPx!=null) el.style.borderRadius = radiusPx + 'px';
-    // กรณีปุ่มเป็นแนวปุ่มขอบ/พื้นหลังอ่อน ให้ลบคลาส tailwind เดิมที่ขัดสี
-    el.classList.remove('bg-gray-100','bg-blue-50','bg-purple-50','bg-green-50','text-blue-700','text-purple-700','text-green-700');
+    el.classList.remove(
+      'bg-gray-100','bg-blue-50','bg-purple-50','bg-green-50',
+      'text-blue-700','text-purple-700','text-green-700',
+      'bg-pink-500','bg-pink-600','bg-blue-600','bg-blue-700',
+      'hover:bg-blue-700','hover:bg-pink-600'
+    );
   }
 
   function applySettings(v) {
@@ -1113,9 +1117,12 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     }, '🎨 ปรับธีม');
     document.body.appendChild(fab);
 
+    // ✅ เอาตัวดัก wheel/touchmove ออก และให้ panel เลื่อนเองได้
     const overlay = createEl('div', { id:'advCustomizeOverlay', class:'fixed inset-0 z-50 hidden', style:'background:rgba(0,0,0,.45)' });
-    ['wheel','touchmove'].forEach(evt=> overlay.addEventListener(evt, e=>{ e.preventDefault(); e.stopPropagation(); }, {passive:false}));
-    const panel = createEl('div', { class:'absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-2xl p-5 overflow-auto' });
+    const panel = createEl('div', {
+      class:'absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-2xl p-5',
+      style:'overflow-y:auto;-webkit-overflow-scrolling:touch'
+    });
     panel.addEventListener('click', e=> e.stopPropagation(), true);
     overlay.addEventListener('click', ()=> { overlay.classList.add('hidden'); document.body.style.overflow=''; });
     panel.setAttribute('tabindex','-1');
@@ -1260,15 +1267,16 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
         <button type="button" id="adv_preview" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ดูตัวอย่าง</button>
         <div class="space-x-2">
           <button type="button" id="adv_close" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ปิด</button>
-          <button type="submit" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
+          <!-- ✅ เปลี่ยนเป็น type="button" -->
+          <button type="button" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
         </div>
       </div>
       <p id="adv_msg" class="text-xs text-gray-500 mt-1"></p>
     `;
     panel.appendChild(form);
 
-    // ป้องกัน submit หน้า
-    form.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); });
+    // กัน Enter ส่งฟอร์มโดยไม่ตั้งใจ
+    form.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); } });
 
     function fillForm(v){
       // ข้อความ/ธีม
@@ -1281,7 +1289,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       $q('#radiusVal').textContent   = v.buttonRadius ?? 12;
       $q('#adv_darkDefault').checked = !!v.darkDefault;
       $q('#adv_fontUrl').value       = v.fontUrl || '';
-      $q('#adv_fontCssFamily').value = v.fontCssFamily || '系统ui' || 'system-ui'; // fallback กันบางเบราว์เซอร์แปลก ๆ
+      $q('#adv_fontCssFamily').value = v.fontCssFamily || 'system-ui'; // ✅ แก้ fallback
       $q('#adv_hideWelcome').checked    = !!v.hideWelcome;
       $q('#adv_hideProfile').checked    = !!v.hideProfile;
       $q('#adv_hideCalculator').checked = !!v.hideCalculator;
@@ -1398,7 +1406,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       $q('#adv_msg').textContent = 'แสดงตัวอย่างแล้ว (ยังไม่บันทึก)';
     });
 
-    // บันทึก
+    // บันทึก (type="button")
     $q('#adv_save').addEventListener('click', async (e)=>{
       e.preventDefault(); e.stopPropagation();
       const msg = $q('#adv_msg');
