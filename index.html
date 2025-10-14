@@ -258,16 +258,7 @@
             </tr>
           </thead>
           <tbody id="historyBody"></tbody>
-          <tfoot>
-            <tr class="bg-gray-50 font-semibold">
-              <td class="px-3 py-2">รวม</td>
-              <td class="px-3 py-2" id="ftIncome">—</td>
-              <td class="px-3 py-2" id="ftExpense">—</td>
-              <td class="px-3 py-2" id="ftDeduct">—</td>
-              <td class="px-3 py-2" id="ftNet">—</td>
-              <td class="px-3 py-2" colspan="2">ภาษีรวม (ประมาณ): <span id="ftTax" class="font-bold text-red-600">—</span></td>
-            </tr>
-          </tfoot>
+          
         </table>
       </div>
       <p id="historyMsg" class="text-sm mt-3"></p>
@@ -744,14 +735,7 @@ function renderSummary(rows){
   document.getElementById('sumIncome').textContent = sumIncome.toLocaleString('th-TH');
   document.getElementById('sumExpense').textContent = sumExpense.toLocaleString('th-TH');
   document.getElementById('sumDeduct').textContent = sumDeduct.toLocaleString('th-TH');
-  document.getElementById('sumTax').textContent = tax.toLocaleString('th-TH');
-
-  document.getElementById('ftIncome').textContent = sumIncome.toLocaleString('th-TH');
-  document.getElementById('ftExpense').textContent = sumExpense.toLocaleString('th-TH');
-  document.getElementById('ftDeduct').textContent = sumDeduct.toLocaleString('th-TH');
-  document.getElementById('ftNet').textContent = sumNet.toLocaleString('th-TH');
-  document.getElementById('ftTax').textContent = tax.toLocaleString('th-TH');
-}
+  document.getElementById('sumTax').textContent = tax.toLocaleString('th-TH');}
 
 async function loadHistory(){
   historyMsg.textContent=''; historyBody.innerHTML='';
