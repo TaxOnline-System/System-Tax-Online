@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TaxOnline (Drive) - ระบบคำนวณภาษี + อัปโหลดใบเสร็จไป Google Drive</title>
+<title>TaxOnline (Drive) - บันทึกรายวัน + คำนวณภาษี</title>
 
 <!-- Tailwind -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- jsPDF + autoTable -->
+<!-- jsPDF + autoTable (สำหรับ History) -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-<!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
+<!-- Firebase v8 (ต้องมาก่อนสคริปต์ของเรา) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -23,837 +23,641 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-  body{background:linear-gradient(-45deg,#e0c3fc,#8ec5fc,#fbc2eb,#a1c4fd);background-size:400% 400%;animation:gradientBG 15s ease infinite}
-  @keyframes gradientBG{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-  .fade-in{animation:fadeIn .7s ease-in}@keyframes fadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
-  #splash{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:1;transition:opacity .8s ease}
-  .splash-spinner{width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;animation:spin 1.4s linear infinite}
-  @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-  .nav-link{display:inline-block;margin:.25rem .4rem}
-  #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
+  body{background:#f6f7fb}
+  .fade-in{animation:fadeIn .4s ease}@keyframes fadeIn{from{opacity:.3;transform:translateY(3px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body class="font-sans">
 
-<!-- Splash -->
-<div id="splash">
-  <div class="splash-spinner"></div>
-  <h2 class="text-xl font-semibold text-pink-600 mt-4">กำลังโหลดระบบ...</h2>
-</div>
-
-<!-- Header -->
-<header class="bg-white shadow p-4 fixed w-full z-30 top-0">
+<header class="bg-white shadow p-4 sticky top-0 z-30">
   <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
     <div class="flex items-center gap-3 mb-2 sm:mb-0">
-      <h1 class="text-2xl font-bold text-pink-600">TaxOnline</h1>
+      <h1 class="text-2xl font-bold text-indigo-600">TaxOnline</h1>
       <span id="userGreeting" class="text-sm text-gray-600 hidden">สวัสดี, …</span>
     </div>
     <nav class="text-center sm:text-right">
-      <button class="nav-link text-pink-600 hover:underline font-semibold" data-nav="welcome">หน้าแรก</button>
-      <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">คำนวณภาษี</button>
-      <button class="nav-link text-gray-700 hover:underline" data-nav="history">ประวัติ</button>
-      <button class="nav-link text-gray-700 hover:underline" data-nav="profile">โปรไฟล์</button>
-      <button id="loginNav" class="nav-link text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
-      <button id="logoutBtn" class="nav-link text-red-600 hover:underline hidden">ออกจากระบบ</button>
+      <button class="px-2 text-indigo-600 hover:underline font-semibold" data-nav="welcome">หน้าแรก</button>
+      <button class="px-2 hover:underline" data-nav="calculator">คำนวณภาษี</button>
+      <button class="px-2 hover:underline" data-nav="history">ประวัติรวม</button>
+      <button class="px-2 hover:underline" data-nav="profile">โปรไฟล์</button>
+      <button id="loginNav" class="px-2 text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
+      <button id="logoutBtn" class="px-2 text-red-600 hover:underline hidden">ออกจากระบบ</button>
     </nav>
   </div>
 </header>
 
-<!-- Time + Drive status -->
-<div class="fixed top-20 sm:top-4 left-4 z-50 bg-white text-sm text-gray-700 px-3 py-1 rounded shadow">
-  <span id="datetime">--:--</span>
-</div>
-<div class="fixed top-20 sm:top-4 right-4 z-50 flex gap-2">
-  <button id="driveConnectBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow text-sm font-medium">เชื่อมต่อ Google Drive</button>
-  <span id="driveStatus" class="bg-white text-gray-700 px-3 py-2 rounded shadow text-sm">ยังไม่เชื่อมต่อ</span>
-</div>
-
-<div class="pt-28 pb-16">
+<div class="max-w-6xl mx-auto p-4">
 
   <!-- Welcome -->
-  <section id="welcomeSection" class="fade-in text-center px-6">
-    <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 mb-4">คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!</h2>
-    <p class="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto">
-      อัปโหลดใบเสร็จขึ้น <b>Google Drive ของคุณเอง</b> (ฟรี) และบันทึกประวัติไว้ใน Firestore — เหมาะสำหรับแนบประกอบการยื่นภาษี
-    </p>
-    <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
-      <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มคำนวณเลย</button>
-      <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
+  <section id="welcomeSection" class="fade-in">
+    <div class="bg-white rounded-2xl shadow p-6">
+      <h2 class="text-2xl font-bold text-indigo-700">คำนวณภาษีจากรายการรายวัน</h2>
+      <p class="text-gray-600 mt-2">บันทึกรายได้ / ค่าใช้จ่าย / ค่าลดหย่อนเป็นรายวัน แล้วให้ระบบรวมคำนวณแบบ “ตามจริง” หรือ “เหมาจ่าย”</p>
+      <div class="mt-4 flex gap-2">
+        <button data-nav="calculator" class="px-4 py-2 rounded bg-indigo-600 text-white">เริ่มใช้งาน</button>
+        <button data-nav="auth" class="px-4 py-2 rounded bg-gray-100">เข้าสู่ระบบ</button>
+      </div>
     </div>
   </section>
 
   <!-- Auth -->
-  <section id="authSection" class="hidden fade-in px-4">
-    <div class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-2xl">
-      <h2 class="text-2xl font-bold text-center text-pink-600 mb-6">เข้าสู่ระบบ / สมัครสมาชิก</h2>
-
-      <div class="flex justify-center space-x-4 mb-6">
-        <button id="loginTab" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full">เข้าสู่ระบบ</button>
-        <button id="signupTab" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full">สมัครสมาชิก</button>
+  <section id="authSection" class="hidden fade-in">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow p-6 space-y-4">
+      <h3 class="text-xl font-semibold text-indigo-600 text-center">เข้าสู่ระบบ / สมัครสมาชิก</h3>
+      <div class="flex justify-center gap-2">
+        <button id="loginTab" class="px-3 py-1 rounded bg-indigo-600 text-white">เข้าสู่ระบบ</button>
+        <button id="signupTab" class="px-3 py-1 rounded bg-green-600 text-white">สมัครสมาชิก</button>
       </div>
-
-      <!-- Login -->
-      <form id="loginForm" class="space-y-4 hidden">
-        <input type="email" id="loginEmail" placeholder="อีเมล" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-        <input type="password" id="loginPassword" placeholder="รหัสผ่าน" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"/>
-        <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold" type="submit">เข้าสู่ระบบ</button>
+      <form id="loginForm" class="space-y-3 hidden">
+        <input id="loginEmail" type="email" placeholder="อีเมล" class="w-full p-2 border rounded">
+        <input id="loginPassword" type="password" placeholder="รหัสผ่าน" class="w-full p-2 border rounded">
+        <button class="w-full p-2 rounded bg-indigo-600 text-white">เข้าสู่ระบบ</button>
       </form>
-
-      <!-- Signup -->
-      <form id="signupForm" class="space-y-4 hidden">
-        <div class="grid grid-cols-2 gap-3">
-          <input type="text" id="signupFirstName" placeholder="ชื่อ" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
-          <input type="text" id="signupLastName" placeholder="นามสกุล" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
+      <form id="signupForm" class="space-y-3 hidden">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="signupFirstName" type="text" placeholder="ชื่อ" class="p-2 border rounded">
+          <input id="signupLastName" type="text" placeholder="นามสกุล" class="p-2 border rounded">
         </div>
-        <input type="email" id="signupEmail" placeholder="อีเมล" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
-        <input type="password" id="signupPassword" placeholder="รหัสผ่าน" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"/>
-        <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold" type="submit">สมัครสมาชิก</button>
+        <input id="signupEmail" type="email" placeholder="อีเมล" class="w-full p-2 border rounded">
+        <input id="signupPassword" type="password" placeholder="รหัสผ่าน" class="w-full p-2 border rounded">
+        <button class="w-full p-2 rounded bg-green-600 text-white">สมัครสมาชิก</button>
       </form>
-
-      <div class="mt-6 border-t pt-4">
-        <button id="googleSignInBtn" class="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold">
-          เข้าสู่ระบบด้วย Google (Firebase Auth)
-        </button>
+      <div class="border-t pt-3">
+        <button id="googleSignInBtn" class="w-full p-2 rounded bg-red-500 text-white">เข้าสู่ระบบด้วย Google</button>
       </div>
-
-      <p id="authMessage" class="text-red-500 text-center mt-4 text-sm"></p>
+      <p id="authMessage" class="text-sm text-red-600"></p>
     </div>
   </section>
 
   <!-- Profile -->
-  <section id="profileSection" class="hidden fade-in px-4">
-    <div class="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
-      <h3 class="text-2xl font-semibold text-pink-600 mb-4">โปรไฟล์ผู้ใช้งาน</h3>
-      <form id="profileForm" class="space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm text-gray-700">ชื่อ</label>
-            <input id="profileFirstName" type="text" class="w-full p-2 border rounded-lg"/>
-          </div>
-          <div>
-            <label class="block text-sm text-gray-700">นามสกุล</label>
-            <input id="profileLastName" type="text" class="w-full p-2 border rounded-lg"/>
-          </div>
+  <section id="profileSection" class="hidden fade-in">
+    <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow p-6">
+      <h3 class="text-xl font-semibold text-indigo-600 mb-4">โปรไฟล์</h3>
+      <form id="profileForm" class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="text-sm">ชื่อ</label><input id="profileFirstName" class="w-full p-2 border rounded"></div>
+          <div><label class="text-sm">นามสกุล</label><input id="profileLastName" class="w-full p-2 border rounded"></div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm text-gray-700">อีเมล</label>
-            <input id="profileEmail" type="email" class="w-full p-2 border rounded-lg" disabled/>
-          </div>
-          <div>
-            <label class="block text-sm text-gray-700">เบอร์โทร</label>
-            <input id="profilePhone" type="text" class="w-full p-2 border rounded-lg"/>
-          </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="text-sm">อีเมล</label><input id="profileEmail" disabled class="w-full p-2 border rounded"></div>
+          <div><label class="text-sm">เบอร์โทร</label><input id="profilePhone" class="w-full p-2 border rounded"></div>
         </div>
-        <div>
-          <label class="block text-sm text-gray-700">ที่อยู่</label>
-          <textarea id="profileAddress" rows="3" class="w-full p-2 border rounded-lg"></textarea>
+        <div><label class="text-sm">ที่อยู่</label><textarea id="profileAddress" rows="3" class="w-full p-2 border rounded"></textarea></div>
+        <div class="flex gap-2">
+          <button class="px-4 py-2 rounded bg-indigo-600 text-white">บันทึกโปรไฟล์</button>
+          <button type="button" id="reloadProfile" class="px-4 py-2 rounded bg-gray-100">โหลดข้อมูล</button>
         </div>
-        <div class="flex gap-3">
-          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold">บันทึกโปรไฟล์</button>
-          <button type="button" id="reloadProfile" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg">โหลดข้อมูล</button>
-        </div>
-        <p id="profileMsg" class="text-sm mt-2"></p>
+        <p id="profileMsg" class="text-sm"></p>
       </form>
     </div>
   </section>
 
-  <!-- Calculator (reworked as entry logger + aggregator) -->
-  <section id="calculatorSection" class="hidden fade-in px-4">
-    <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-      <h3 class="text-xl sm:text-2xl font-semibold text-center text-blue-600 mb-4">บันทึกรายการ & คำนวณภาษีจากประวัติ</h3>
+  <!-- Calculator: รายวัน + ประวัติ + คำนวณ -->
+  <section id="calculatorSection" class="hidden fade-in">
+    <div class="bg-white rounded-2xl shadow p-6 space-y-5">
 
-      <!-- Entry form -->
-      <form id="entryForm" class="space-y-3">
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <!-- บันทึกรายการรายวัน -->
+      <div>
+        <h3 class="text-lg font-semibold text-indigo-600">บันทึกรายการรายวัน</h3>
+        <form id="entryForm" class="mt-3 grid grid-cols-1 lg:grid-cols-5 gap-3">
+          <div><label class="text-sm">วันที่</label><input id="entryDate" type="date" class="w-full p-2 border rounded"></div>
           <div>
-            <label class="block text-sm font-medium">วันที่</label>
-            <input type="date" id="entryDate" class="w-full p-2 border rounded-lg"/>
-          </div>
-          <div>
-            <label class="block text-sm font-medium">ประเภท</label>
-            <select id="entryType" class="w-full p-2 border rounded-lg">
+            <label class="text-sm">ประเภท</label>
+            <select id="entryType" class="w-full p-2 border rounded">
               <option value="income">รายได้</option>
-              <option value="expense">รายจ่าย</option>
+              <option value="expense">ค่าใช้จ่าย</option>
               <option value="deduction">ค่าลดหย่อน</option>
             </select>
           </div>
-          <div>
-            <label class="block text-sm font-medium">จำนวนเงิน (บาท)</label>
-            <input type="number" step="0.01" id="entryAmount" class="w-full p-2 border rounded-lg"/>
-          </div>
-          <div>
-            <label class="block text-sm font-medium">หมายเหตุ</label>
-            <input type="text" id="entryNote" class="w-full p-2 border rounded-lg" placeholder="เช่น เงินเดือน/ใบเสร็จ..."/>
-          </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium">แนบไฟล์ใบเสร็จ (อัปขึ้น Google Drive)</label>
-          <input type="file" id="entryFiles" accept="image/*,.pdf" multiple class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-        </div>
-        <div class="flex items-center gap-2">
-          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold">บันทึกรายการ</button>
-          <span id="entryMsg" class="text-sm"></span>
-        </div>
-      </form>
+          <div><label class="text-sm">จำนวนเงิน (บาท)</label><input id="entryAmount" type="number" step="0.01" class="w-full p-2 border rounded"></div>
+          <div class="lg:col-span-2"><label class="text-sm">หมายเหตุ</label><input id="entryNote" placeholder="เช่น เงินเดือน/ค่าเดินทาง/ประกันชีวิต..." class="w-full p-2 border rounded"></div>
 
-      <hr class="my-5"/>
+          <div class="lg:col-span-5">
+            <label class="text-sm">แนบใบเสร็จ (อัปขึ้น Google Drive ของคุณ)</label>
+            <input id="entryFiles" type="file" accept="image/*,.pdf" multiple class="mt-1 block w-full text-sm text-gray-600">
+          </div>
 
-      <!-- Period filter & method -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="lg:col-span-5 flex items-center gap-2">
+            <button class="px-4 py-2 rounded bg-indigo-600 text-white">บันทึกรายการ</button>
+            <span id="entryMsg" class="text-sm"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- ตัวกรองประวัติ + วิธีคำนวณ -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div>
-          <label class="block text-sm font-medium">ช่วงเวลา (เดือน)</label>
-          <input type="month" id="periodMonth" class="w-full p-2 border rounded-lg"/>
+          <label class="text-sm">เลือกเดือน</label>
+          <input id="periodMonth" type="month" class="w-full p-2 border rounded">
+          <div class="mt-1 text-xs text-gray-500">ปล่อยว่าง = ดู “ทั้งหมด”</div>
         </div>
         <div>
-          <label class="block text-sm font-medium">วิธีรายจ่าย</label>
-          <select id="expenseMethod" class="w-full p-2 border rounded-lg">
+          <label class="text-sm">วิธีคิดค่าใช้จ่าย</label>
+          <select id="expenseMethod" class="w-full p-2 border rounded">
             <option value="actual">ตามจริง</option>
             <option value="lumpsum">เหมาจ่าย</option>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-medium">อัตราเหมาจ่าย (%)</label>
-            <input type="number" id="lumpRate" value="50" class="w-full p-2 border rounded-lg"/>
+            <label class="text-xs">อัตราเหมาจ่าย (%)</label>
+            <input id="lumpRate" type="number" value="50" class="w-full p-2 border rounded">
           </div>
           <div>
-            <label class="block text-xs font-medium">เพดานเหมาจ่าย (บาท)</label>
-            <input type="number" id="lumpCap" value="100000" class="w-full p-2 border rounded-lg"/>
+            <label class="text-xs">เพดานเหมาจ่าย (บาท)</label>
+            <input id="lumpCap" type="number" value="100000" class="w-full p-2 border rounded">
           </div>
         </div>
       </div>
-      <div class="mt-3 flex items-center gap-2">
-        <button id="calcAggregateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold">คำนวณรวม</button>
-        <button id="saveAggregateBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold">บันทึกผลรวม</button>
+
+      <!-- ปุ่มคำนวณ + บันทึกผลรวม -->
+      <div class="flex items-center gap-2">
+        <button id="calcAggregateBtn" class="px-4 py-2 rounded bg-indigo-600 text-white">คำนวณรวม</button>
+        <button id="saveAggregateBtn" class="px-4 py-2 rounded bg-green-600 text-white">บันทึกผลรวม</button>
         <span id="aggregateMsg" class="text-sm"></span>
       </div>
 
-      <!-- Entries table -->
-      <div class="mt-4 overflow-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left bg-gray-50">
+      <!-- ประวัติรายการ (ตาราง) -->
+      <div>
+        <h4 class="font-semibold mb-2">ประวัติรายการ</h4>
+        <div class="overflow-auto">
+          <table class="min-w-full text-sm">
+            <thead><tr class="bg-gray-50 text-left">
               <th class="px-3 py-2">วันที่</th>
               <th class="px-3 py-2">ประเภท</th>
               <th class="px-3 py-2">จำนวนเงิน</th>
               <th class="px-3 py-2">หมายเหตุ</th>
               <th class="px-3 py-2">ไฟล์</th>
               <th class="px-3 py-2">ลบ</th>
-            </tr>
-          </thead>
-          <tbody id="entriesBody"></tbody>
-        </table>
+            </tr></thead>
+            <tbody id="entriesBody"></tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Results -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+      <!-- สรุป + กราฟ -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="bg-gray-50 rounded-xl p-4">
-          <h4 class="font-semibold mb-2">สรุปค่ารวม (ช่วงที่เลือก)</h4>
+          <h4 class="font-semibold mb-2">สรุปค่ารวม</h4>
           <ul class="text-sm space-y-1">
             <li>รายได้รวม: <span id="sumIncome">0</span> บาท</li>
-            <li>รายจ่ายรวม (ตามจริง): <span id="sumExpenseActual">0</span> บาท</li>
-            <li>รายจ่ายที่ใช้คิดภาษี: <span id="sumExpenseUsed">0</span> บาท</li>
+            <li>ค่าใช้จ่ายรวม (ตามจริง): <span id="sumExpenseActual">0</span> บาท</li>
+            <li>ค่าใช้จ่ายที่ใช้คิดภาษี: <span id="sumExpenseUsed">0</span> บาท</li>
             <li>ค่าลดหย่อนรวม: <span id="sumDeduction">0</span> บาท</li>
             <li class="font-semibold">ภาษีที่ต้องชำระ: <span id="sumTax">0</span> บาท</li>
           </ul>
         </div>
-        <div>
-          <canvas id="taxPieChart"></canvas>
-        </div>
+        <div><canvas id="taxPieChart"></canvas></div>
       </div>
 
     </div>
   </section>
 
-  <!-- History -->
-  <section id="historySection" class="hidden fade-in px-4">
-    <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-2xl font-semibold text-pink-600">ประวัติการคำนวณ</h3>
+  <!-- History รวมผลคำนวณ -->
+  <section id="historySection" class="hidden fade-in">
+    <div class="bg-white rounded-2xl shadow p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xl font-semibold text-indigo-600">ประวัติการคำนวณ</h3>
         <div class="flex gap-2">
-          <button id="refreshHistory" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
-          <button id="downloadCsvBtn" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm">ดาวน์โหลด CSV</button>
-          <button id="downloadPdfBtn" class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm">ดาวน์โหลดสรุป PDF</button>
-          <button id="openDriveFolderBtn" class="px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm">เปิดโฟลเดอร์ Drive</button>
+          <button id="refreshHistory" class="px-3 py-2 rounded bg-gray-100">รีเฟรช</button>
+          <button id="downloadCsvBtn" class="px-3 py-2 rounded bg-gray-100">CSV</button>
+          <button id="downloadPdfBtn" class="px-3 py-2 rounded bg-gray-100">PDF</button>
         </div>
       </div>
       <div class="overflow-auto">
         <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left bg-gray-50">
-              <th class="px-3 py-2">ช่วง</th>
-              <th class="px-3 py-2">รายได้</th>
-              <th class="px-3 py-2">รายจ่าย(ใช้คิด)</th>
-              <th class="px-3 py-2">ลดหย่อน</th>
-              <th class="px-3 py-2">ภาษี</th>
-              <th class="px-3 py-2">จัดการ</th>
-            </tr>
-          </thead>
+          <thead><tr class="bg-gray-50 text-left">
+            <th class="px-3 py-2">ช่วง</th>
+            <th class="px-3 py-2">รายได้</th>
+            <th class="px-3 py-2">ค่าใช้จ่าย(ใช้คิด)</th>
+            <th class="px-3 py-2">ลดหย่อน</th>
+            <th class="px-3 py-2">ภาษี</th>
+            <th class="px-3 py-2">จัดการ</th>
+          </tr></thead>
           <tbody id="historyBody"></tbody>
         </table>
       </div>
-      <p id="historyMsg" class="text-sm mt-3"></p>
+      <p id="historyMsg" class="text-sm mt-2"></p>
     </div>
   </section>
-
-  <!-- Diagnostics (toggle with #debug or ?debug=1) -->
-  <section id="diagWrap" class="hidden fade-in px-4">
-    <div class="max-w-3xl mx-auto bg-white p-4 rounded-xl shadow">
-      <h3 class="text-lg font-semibold mb-2">Diagnostics</h3>
-      <pre id="diag" class="text-xs whitespace-pre-wrap"></pre>
-    </div>
-  </section>
-
 </div>
 
-<footer class="bg-white p-4 text-center text-sm text-gray-500">
-  &copy; 2025 ระบบคำนวณภาษี · ใช้ Google Drive API (ไม่ใช้ Firebase Storage)
-</footer>
-
 <script>
-/*********************
- * UTIL
- *********************/
+/* ---------- Utils ---------- */
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-async function waitForFirebase(maxMs=8000){
-  const start = Date.now();
-  while (typeof window.firebase === 'undefined'){
-    if (Date.now() - start > maxMs) throw new Error('Firebase SDK ไม่ถูกโหลดภายในเวลา '+maxMs+'ms');
-    await sleep(100);
-  }
-}
-function showDiag(lines){
-  const show = location.hash.includes('debug') || /[?&]debug=1/.test(location.search);
-  if (!show) return;
-  const wrap = document.getElementById('diagWrap');
-  const pre = document.getElementById('diag');
-  if (wrap && pre){ wrap.classList.remove('hidden'); pre.textContent = (Array.isArray(lines)?lines:[lines]).join('\n'); }
-}
-function parseMonthInput(ym){
-  // ym: '2025-10' -> {start: Date, end: Date(exclusive)}
-  if (!ym) return null;
-  const [y,m] = ym.split('-').map(x=>parseInt(x,10));
-  if (!y || !m) return null;
-  const start = new Date(y, m-1, 1, 0,0,0,0);
-  const end = new Date(y, m, 1, 0,0,0,0);
-  return {start, end};
+async function waitForFirebase(maxMs=10000){
+  const t0=Date.now(); while(typeof window.firebase==='undefined'){ if(Date.now()-t0>maxMs) throw new Error('Firebase SDK ไม่ถูกโหลดภายในกำหนด'); await sleep(100); }
 }
 
-/*********************
- * GLOBALS
- *********************/
-let db, auth; // set after init
+/* ---------- Firebase Init (หลัง SDK โหลดแล้วเท่านั้น) ---------- */
+let db, auth;
+(async function initFirebase(){
+  await waitForFirebase();
+  const firebaseConfig = {
+    apiKey:"AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
+    authDomain:"tax-online-6afdd.firebaseapp.com",
+    projectId:"tax-online-6afdd",
+    appId:"1:959276043439:web:f358ce055687efea5d185a"
+  };
+  if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  auth = firebase.auth();
+  wireAuthUI();
+})();
 
-/*********************
- * Google Drive OAuth (GIS)
- *********************/
-const GOOGLE_OAUTH_CLIENT_ID = "959276043439-rpc16dfdslna3ndjijicg0gehu8klp93.apps.googleusercontent.com";
-const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
-let driveTokenClient = null;
-let driveAccessToken = null;
-let driveTokenExpiry = 0;
-
-function setDriveStatus(msg, ok=false){
-  const el = document.getElementById('driveStatus');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = ok ? "bg-green-100 text-green-800 px-3 py-2 rounded shadow text-sm"
-                    : "bg-white text-gray-700 px-3 py-2 rounded shadow text-sm";
-}
-
-async function connectDrive(){
-  if (!window.google || !google.accounts || !google.accounts.oauth2) { alert('ยังโหลด Google OAuth ไม่เสร็จ ลองใหม่อีกครั้ง'); return; }
-  if (!driveTokenClient) {
-    driveTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_OAUTH_CLIENT_ID,
-      scope: DRIVE_SCOPES,
-      callback: (resp) => {
-        if (resp && resp.access_token) {
-          driveAccessToken = resp.access_token;
-          driveTokenExpiry = Date.now() + ((resp.expires_in || 3600) * 1000);
-          setDriveStatus('เชื่อมต่อ Google Drive แล้ว', true);
-        } else { setDriveStatus('เชื่อมต่อไม่สำเร็จ'); }
-      }
-    });
-  }
-  driveTokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
-async function ensureDriveToken(){
-  if (driveAccessToken && Date.now() < driveTokenExpiry - 5000) return driveAccessToken;
-  if (!driveTokenClient) {
-    driveTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_OAUTH_CLIENT_ID,
-      scope: DRIVE_SCOPES,
-      callback: (resp) => {
-        if (resp && resp.access_token) {
-          driveAccessToken = resp.access_token;
-          driveTokenExpiry = Date.now() + ((resp.expires_in || 3600) * 1000);
-          setDriveStatus('เชื่อมต่อ Google Drive แล้ว', true);
-        }
-      }
-    });
-  }
-  return new Promise((resolve, reject) => {
-    driveTokenClient.callback = (resp) => {
-      if (resp && resp.access_token) { driveAccessToken = resp.access_token; driveTokenExpiry = Date.now() + ((resp.expires_in || 3600) * 1000); setDriveStatus('เชื่อมต่อ Google Drive แล้ว', true); resolve(driveAccessToken); }
-      else { setDriveStatus('เชื่อมต่อไม่สำเร็จ'); reject(new Error('no access token')); }
-    };
-    driveTokenClient.requestAccessToken({ prompt: '' });
-  });
-}
-
-async function getOrCreateDriveFolder(){
-  const cacheKey = 'taxonline_drive_folder';
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) return JSON.parse(cached);
-  await ensureDriveToken();
-  const searchRes = await fetch(
-    'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name='TaxOnline Receipts' and mimeType='application/vnd.google-apps.folder' and trashed=false") + '&fields=files(id,webViewLink)',
-    { headers: { 'Authorization': 'Bearer ' + driveAccessToken } }
-  );
-  if (searchRes.ok) {
-    const j = await searchRes.json();
-    if (j.files && j.files.length > 0) {
-      const found = { id: j.files[0].id, webViewLink: j.files[0].webViewLink };
-      localStorage.setItem(cacheKey, JSON.stringify(found));
-      return found;
-    }
-  }
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
-    method: 'POST', headers: { 'Authorization': 'Bearer ' + driveAccessToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'TaxOnline Receipts', mimeType: 'application/vnd.google-apps.folder' })
-  });
-  if (!createRes.ok) { const t = await createRes.text(); throw new Error('สร้างโฟลเดอร์ใน Drive ไม่สำเร็จ: ' + t); }
-  const data = await createRes.json();
-  const out = { id: data.id, webViewLink: data.webViewLink };
-  localStorage.setItem(cacheKey, JSON.stringify(out));
-  return out;
-}
-
-async function uploadFilesToDrive(files, parentInfo){
-  await ensureDriveToken();
-  const results = [];
-  const parentId = parentInfo?.id;
-  for (const file of Array.from(files || [])) {
-    const metadata = { name: file.name, mimeType: file.type || 'application/octet-stream', parents: parentId ? [parentId] : undefined };
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', file);
-    const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink';
-    const res = await fetch(url, { method: 'POST', headers: { 'Authorization': 'Bearer ' + driveAccessToken }, body: form });
-    if (!res.ok) { const t = await res.text(); throw new Error('อัปโหลดไป Drive ล้มเหลว: ' + t); }
-    const json = await res.json();
-    results.push({ name: file.name, size: file.size || null, mimeType: file.type || null, driveFileId: json.id, webViewLink: json.webViewLink });
-  }
-  return results;
-}
-
-/*********************
- * UI helpers
- *********************/
+/* ---------- Simple Router ---------- */
 const sections = {
   welcome: document.getElementById('welcomeSection'),
   auth: document.getElementById('authSection'),
   profile: document.getElementById('profileSection'),
   calculator: document.getElementById('calculatorSection'),
   history: document.getElementById('historySection'),
-  diag: document.getElementById('diagWrap')
 };
-const userGreeting = document.getElementById('userGreeting');
-const loginNav = document.getElementById('loginNav');
-const logoutBtn = document.getElementById('logoutBtn');
-const historyBody = document.getElementById('historyBody');
-const historyMsg = document.getElementById('historyMsg');
-const profileMsg = document.getElementById('profileMsg');
-const calcMsg = document.getElementById('aggregateMsg');
-
-function showOnly(sectionKey){
-  Object.keys(sections).forEach(k=>{ if (!sections[k]) return; sections[k].classList.toggle('hidden', k!==sectionKey); });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+function showOnly(key){
+  Object.keys(sections).forEach(k=>sections[k].classList.toggle('hidden',k!==key));
+  window.scrollTo({top:0,behavior:'smooth'});
 }
+document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{
+  const t=b.getAttribute('data-nav');
+  if(['calculator','history','profile'].includes(t) && !auth?.currentUser){ alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
+  if(t==='calculator'){ ensurePeriodDefaults(); loadEntries(); }
+  if(t==='history'){ loadHistory(); }
+  if(t==='profile'){ loadProfile(); }
+  showOnly(t);
+}));
+showOnly('welcome');
 
-document.querySelectorAll('[data-nav]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const target = btn.getAttribute('data-nav');
-    if (target==='calculator' || target==='history' || target==='profile') {
-      if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); showOnly('auth'); return; }
-    }
-    if (target==='history') loadHistory();
-    if (target==='profile') loadProfile();
-    if (target==='calculator') { ensurePeriodDefaults(); loadEntriesForPeriod(); }
-    showOnly(target);
+/* ---------- Auth UI ---------- */
+function wireAuthUI(){
+  const loginTab = document.getElementById('loginTab');
+  const signupTab = document.getElementById('signupTab');
+  const loginForm = document.getElementById('loginForm');
+  const signupForm = document.getElementById('signupForm');
+  const authMessage = document.getElementById('authMessage');
+  loginTab.onclick=()=>{loginForm.classList.remove('hidden');signupForm.classList.add('hidden');authMessage.textContent='';};
+  signupTab.onclick=()=>{signupForm.classList.remove('hidden');loginForm.classList.add('hidden');authMessage.textContent='';};
+  loginTab.click();
+
+  loginForm.addEventListener('submit',(e)=>{
+    e.preventDefault();
+    const email=document.getElementById('loginEmail').value.trim();
+    const password=document.getElementById('loginPassword').value;
+    auth.signInWithEmailAndPassword(email,password)
+      .then(()=>{showOnly('calculator');ensurePeriodDefaults();loadEntries();})
+      .catch(err=>authMessage.textContent=err.message);
   });
-});
 
-document.getElementById('driveConnectBtn').addEventListener('click', connectDrive);
+  signupForm.addEventListener('submit',(e)=>{
+    e.preventDefault();
+    const first=document.getElementById('signupFirstName').value.trim();
+    const last=document.getElementById('signupLastName').value.trim();
+    const email=document.getElementById('signupEmail').value.trim();
+    const password=document.getElementById('signupPassword').value;
+    if(!first||!last||!email||!password){authMessage.textContent='กรุณากรอกข้อมูลให้ครบ';return;}
+    auth.createUserWithEmailAndPassword(email,password)
+      .then(cred=>{
+        const u=cred.user;
+        return u.updateProfile({displayName:`${first} ${last}`})
+          .then(()=>db.collection('users').doc(u.uid).set({
+            uid:u.uid,firstName:first,lastName:last,email:u.email||email,phone:'',address:'',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          },{merge:true}));
+      })
+      .then(()=>{showOnly('profile');loadProfile();})
+      .catch(err=>authMessage.textContent=err.message);
+  });
 
-// Clock
-function updateDateTime(){
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('th-TH');
-  const dateStr = now.toLocaleDateString('th-TH', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-  const el = document.getElementById('datetime'); if (el) el.innerText = `${dateStr} ${timeStr}`;
-}
-setInterval(updateDateTime, 1000); updateDateTime();
+  document.getElementById('googleSignInBtn').addEventListener('click',()=>{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider)
+      .then(async res=>{
+        const u=res.user;
+        const ref=db.collection('users').doc(u.uid);
+        const snap=await ref.get();
+        if(!snap.exists){
+          const [fn,...ln]=(u.displayName||'').split(' ');
+          await ref.set({uid:u.uid,firstName:fn||'',lastName:ln.join(' ')||'',email:u.email||'',phone:'',address:'',createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        }
+        showOnly('calculator'); ensurePeriodDefaults(); loadEntries();
+      })
+      .catch(err=>authMessage.textContent=err.message);
+  });
 
-window.addEventListener('load', ()=>{
-  setTimeout(()=>{ const s=document.getElementById('splash'); s.style.opacity='0'; setTimeout(()=>s.style.display='none',800); },1200);
-  showOnly('welcome');
-});
+  document.getElementById('logoutBtn').onclick=()=>auth.signOut();
 
-// Auth tabs
-const loginTab = document.getElementById('loginTab');
-const signupTab = document.getElementById('signupTab');
-const loginForm = document.getElementById('loginForm');
-const signupForm = document.getElementById('signupForm');
-const authMessage = document.getElementById('authMessage');
-loginTab.addEventListener('click', ()=>{ loginForm.classList.remove('hidden'); signupForm.classList.add('hidden'); authMessage.textContent=''; });
-signupTab.addEventListener('click', ()=>{ signupForm.classList.remove('hidden'); loginForm.classList.add('hidden'); authMessage.textContent=''; });
-loginTab.click();
-
-/*********************
- * Profile
- *********************/
-const profileForm = document.getElementById('profileForm');
-const profileFirstName = document.getElementById('profileFirstName');
-const profileLastName = document.getElementById('profileLastName');
-const profileEmail = document.getElementById('profileEmail');
-const profilePhone = document.getElementById('profilePhone');
-const profileAddress = document.getElementById('profileAddress');
-document.getElementById('reloadProfile').addEventListener('click', loadProfile);
-
-async function loadProfile(){
-  profileMsg.textContent='';
-  if (!auth || !auth.currentUser) { profileMsg.textContent='กรุณาเข้าสู่ระบบ'; profileMsg.className='text-red-600 text-sm mt-2'; return; }
-  try {
-    const snap = await db.collection('users').doc(auth.currentUser.uid).get();
-    if (snap.exists) {
-      const d = snap.data();
-      profileFirstName.value = d.firstName || '';
-      profileLastName.value  = d.lastName  || '';
-      profileEmail.value     = d.email     || auth.currentUser.email || '';
-      profilePhone.value     = d.phone     || '';
-      profileAddress.value   = d.address   || '';
-      profileMsg.textContent='โหลดข้อมูลสำเร็จ'; profileMsg.className='text-green-600 text-sm mt-2';
-    } else {
-      const u = auth.currentUser;
-      profileFirstName.value = u.displayName ? u.displayName.split(' ')[0] : '';
-      profileLastName.value  = u.displayName ? u.displayName.split(' ').slice(1).join(' ') : '';
-      profileEmail.value     = u.email || '';
-      profileMsg.textContent='ยังไม่มีข้อมูลโปรไฟล์ กรอกแล้วกดบันทึกได้เลย'; profileMsg.className='text-yellow-600 text-sm mt-2';
+  const userGreeting=document.getElementById('userGreeting');
+  const loginNav=document.getElementById('loginNav');
+  const logoutBtn=document.getElementById('logoutBtn');
+  auth.onAuthStateChanged(u=>{
+    if(u){
+      userGreeting.classList.remove('hidden');
+      userGreeting.textContent=`สวัสดี, ${u.displayName||u.email}`;
+      loginNav.classList.add('hidden'); logoutBtn.classList.remove('hidden');
+    }else{
+      userGreeting.classList.add('hidden');
+      loginNav.classList.remove('hidden'); logoutBtn.classList.add('hidden');
+      showOnly('welcome');
     }
-  } catch(e){ profileMsg.textContent=e.message; profileMsg.className='text-red-600 text-sm mt-2'; }
+  });
 }
 
-profileForm.addEventListener('submit', async (e)=>{
+/* ---------- Google Drive OAuth (ใช้ upload ใบเสร็จ) ---------- */
+const GOOGLE_OAUTH_CLIENT_ID="959276043439-rpc16dfdslna3ndjijicg0gehu8klp93.apps.googleusercontent.com";
+const DRIVE_SCOPES="https://www.googleapis.com/auth/drive.file";
+let driveTokenClient=null, driveAccessToken=null, driveTokenExpiry=0;
+
+function setDriveStatus(msg, ok=false){
+  // แสดงสถานะไว้ใน console (ลด UI รก)
+  console.log('[Drive]', msg);
+  if(ok) console.log('token ok');
+}
+async function ensureDriveToken(){
+  if(driveAccessToken && Date.now()<driveTokenExpiry-5000) return driveAccessToken;
+  if(!window.google?.accounts?.oauth2) throw new Error('ยังโหลด Google OAuth ไม่เสร็จ');
+  if(!driveTokenClient){
+    driveTokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:GOOGLE_OAUTH_CLIENT_ID, scope:DRIVE_SCOPES,
+      callback:(resp)=>{ if(resp?.access_token){ driveAccessToken=resp.access_token; driveTokenExpiry=Date.now()+((resp.expires_in||3600)*1000); setDriveStatus('connected',true);} }
+    });
+  }
+  await new Promise((resolve,reject)=>{
+    driveTokenClient.callback=(r)=>{ if(r?.access_token) resolve(); else reject(new Error('no token')); };
+    driveTokenClient.requestAccessToken({prompt:'consent'});
+  });
+  return driveAccessToken;
+}
+async function getOrCreateDriveFolder(){
+  const cacheKey='taxonline_drive_folder';
+  const cached=localStorage.getItem(cacheKey); if(cached) return JSON.parse(cached);
+  await ensureDriveToken();
+  const q="name='TaxOnline Receipts' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  const s=await fetch('https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id,webViewLink)',{headers:{Authorization:'Bearer '+driveAccessToken}});
+  if(s.ok){ const j=await s.json(); if(j.files?.length){ const f={id:j.files[0].id,webViewLink:j.files[0].webViewLink}; localStorage.setItem(cacheKey,JSON.stringify(f)); return f; } }
+  const c=await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink',{method:'POST',headers:{Authorization:'Bearer '+driveAccessToken,'Content-Type':'application/json'},body:JSON.stringify({name:'TaxOnline Receipts',mimeType:'application/vnd.google-apps.folder'})});
+  if(!c.ok) throw new Error('สร้างโฟลเดอร์ Drive ไม่สำเร็จ');
+  const d=await c.json(); const out={id:d.id,webViewLink:d.webViewLink}; localStorage.setItem(cacheKey,JSON.stringify(out)); return out;
+}
+async function uploadFilesToDrive(files,parent){
+  await ensureDriveToken();
+  const results=[]; const parentId=parent?.id;
+  for(const file of Array.from(files||[])){
+    const form=new FormData();
+    form.append('metadata', new Blob([JSON.stringify({name:file.name,mimeType:file.type||'application/octet-stream',parents:parentId?[parentId]:undefined})],{type:'application/json'}));
+    form.append('file',file);
+    const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',{method:'POST',headers:{Authorization:'Bearer '+driveAccessToken},body:form});
+    if(!r.ok) throw new Error('อัปโหลดไป Drive ล้มเหลว');
+    const j=await r.json(); results.push({name:file.name,size:file.size||null,mimeType:file.type||null,driveFileId:j.id,webViewLink:j.webViewLink});
+  }
+  return results;
+}
+
+/* ---------- Profile ---------- */
+async function loadProfile(){
+  const msg=document.getElementById('profileMsg');
+  if(!auth?.currentUser){ msg.textContent='กรุณาเข้าสู่ระบบ'; msg.className='text-sm text-red-600'; return; }
+  try{
+    const snap=await db.collection('users').doc(auth.currentUser.uid).get();
+    const d=snap.data()||{};
+    document.getElementById('profileFirstName').value=d.firstName||'';
+    document.getElementById('profileLastName').value=d.lastName||'';
+    document.getElementById('profileEmail').value=d.email||auth.currentUser.email||'';
+    document.getElementById('profilePhone').value=d.phone||'';
+    document.getElementById('profileAddress').value=d.address||'';
+    msg.textContent='โหลดข้อมูลสำเร็จ'; msg.className='text-sm text-green-600';
+  }catch(e){ msg.textContent=e.message; msg.className='text-sm text-red-600'; }
+}
+document.getElementById('profileForm').addEventListener('submit',async(e)=>{
   e.preventDefault();
-  if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
-  try {
+  const msg=document.getElementById('profileMsg');
+  if(!auth?.currentUser){ alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
+  try{
     await db.collection('users').doc(auth.currentUser.uid).set({
       uid:auth.currentUser.uid,
-      firstName: profileFirstName.value.trim(),
-      lastName:  profileLastName.value.trim(),
-      email:     profileEmail.value.trim() || auth.currentUser.email,
-      phone:     profilePhone.value.trim(),
-      address:   profileAddress.value.trim(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, {merge:true});
-    await auth.currentUser.updateProfile({ displayName: `${profileFirstName.value.trim()} ${profileLastName.value.trim()}`.trim() });
-    userGreeting.textContent = `สวัสดี, ${auth.currentUser.displayName || auth.currentUser.email}`;
-    profileMsg.textContent='บันทึกโปรไฟล์สำเร็จ'; profileMsg.className='text-green-600 text-sm mt-2';
-  } catch(e){ profileMsg.textContent=e.message; profileMsg.className='text-red-600 text-sm mt-2'; }
+      firstName:document.getElementById('profileFirstName').value.trim(),
+      lastName:document.getElementById('profileLastName').value.trim(),
+      email:document.getElementById('profileEmail').value.trim()||auth.currentUser.email,
+      phone:document.getElementById('profilePhone').value.trim(),
+      address:document.getElementById('profileAddress').value.trim(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    await auth.currentUser.updateProfile({displayName:`${document.getElementById('profileFirstName').value.trim()} ${document.getElementById('profileLastName').value.trim()}`.trim()});
+    msg.textContent='บันทึกโปรไฟล์สำเร็จ'; msg.className='text-sm text-green-600';
+  }catch(e){ msg.textContent=e.message; msg.className='text-sm text-red-600'; }
 });
+document.getElementById('reloadProfile').addEventListener('click',loadProfile);
 
-/*********************
- * Entry logging + Aggregation
- *********************/
-const entriesBody = document.getElementById('entriesBody');
-const periodMonth = document.getElementById('periodMonth');
-const expenseMethod = document.getElementById('expenseMethod');
-const lumpRate = document.getElementById('lumpRate');
-const lumpCap = document.getElementById('lumpCap');
-const calcAggregateBtn = document.getElementById('calcAggregateBtn');
-const saveAggregateBtn = document.getElementById('saveAggregateBtn');
+/* ---------- Entries (รายวัน) + Aggregation ---------- */
+const entriesBody=document.getElementById('entriesBody');
+const periodMonth=document.getElementById('periodMonth');
+const expenseMethod=document.getElementById('expenseMethod');
+const lumpRate=document.getElementById('lumpRate');
+const lumpCap=document.getElementById('lumpCap');
+const calcAggregateBtn=document.getElementById('calcAggregateBtn');
+const saveAggregateBtn=document.getElementById('saveAggregateBtn');
 
 function ensurePeriodDefaults(){
-  if (!periodMonth.value){
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    periodMonth.value = ym;
+  if(!periodMonth.value){
+    const now=new Date();
+    periodMonth.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   }
 }
 
-document.getElementById('entryForm').addEventListener('submit', async (e)=>{
+document.getElementById('entryForm').addEventListener('submit',async(e)=>{
   e.preventDefault();
-  if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); showOnly('auth'); return; }
-  const dateStr = document.getElementById('entryDate').value;
-  const type = document.getElementById('entryType').value;
-  const amount = Number(document.getElementById('entryAmount').value);
-  const note = document.getElementById('entryNote').value.trim();
-  const files = document.getElementById('entryFiles').files;
-  const msg = document.getElementById('entryMsg');
-  if (!dateStr || !type || Number.isNaN(amount)) { msg.textContent='กรุณากรอกข้อมูลให้ครบ'; msg.className='text-red-600'; return; }
-
+  const msg=document.getElementById('entryMsg');
+  if(!auth?.currentUser){ alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
+  const dateStr=document.getElementById('entryDate').value;
+  const type=document.getElementById('entryType').value;
+  const amount=Number(document.getElementById('entryAmount').value);
+  const note=document.getElementById('entryNote').value.trim();
+  const files=document.getElementById('entryFiles').files;
+  if(!dateStr || !type || Number.isNaN(amount)){ msg.textContent='กรุณากรอกข้อมูลให้ครบ'; msg.className='text-red-600 text-sm'; return; }
   try{
-    let uploaded = [];
-    if (files && files.length){
-      await ensureDriveToken();
-      const folderInfo = await getOrCreateDriveFolder();
-      uploaded = await uploadFilesToDrive(files, folderInfo);
-    }
-    const dt = new Date(dateStr + 'T00:00:00');
+    let uploaded=[];
+    if(files?.length){ const folder=await getOrCreateDriveFolder(); uploaded=await uploadFilesToDrive(files,folder); }
+    const dt=new Date(dateStr+'T00:00:00');
     await db.collection('users').doc(auth.currentUser.uid).collection('entries').add({
-      date: firebase.firestore.Timestamp.fromDate(dt),
-      type, amount, note, receipts: uploaded,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      ym: dateStr.slice(0,7)
+      date:firebase.firestore.Timestamp.fromDate(dt),
+      ym:dateStr.slice(0,7),
+      type, amount, note, receipts:uploaded,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    msg.textContent='บันทึกสำเร็จ'; msg.className='text-green-600';
-    (document.getElementById('entryAmount')).value='';
-    (document.getElementById('entryNote')).value='';
+    msg.textContent='บันทึกสำเร็จ'; msg.className='text-green-600 text-sm';
+    document.getElementById('entryAmount').value='';
+    document.getElementById('entryNote').value='';
     document.getElementById('entryFiles').value='';
-    loadEntriesForPeriod();
-  }catch(err){ msg.textContent=err.message; msg.className='text-red-600'; }
+    await loadEntries();
+  }catch(err){ msg.textContent=err.message; msg.className='text-red-600 text-sm'; }
 });
 
-async function loadEntriesForPeriod(){
+async function fetchEntries(){
+  if(!auth?.currentUser) return [];
+  const ym=periodMonth.value; // ถ้าว่าง = ทั้งหมด
+  let q=db.collection('users').doc(auth.currentUser.uid).collection('entries');
+  if(ym) q=q.where('ym','==',ym);
+  const snap=await q.orderBy('date','desc').get();
+  return snap.docs.map(d=>({id:d.id,...d.data(),amount:Number(d.data().amount)||0}));
+}
+async function loadEntries(){
   entriesBody.innerHTML='';
-  if (!auth || !auth.currentUser) return;
-  ensurePeriodDefaults();
-  const ym = periodMonth.value; // 'YYYY-MM'
-  try{
-    const snap = await db.collection('users').doc(auth.currentUser.uid)
-      .collection('entries').where('ym','==',ym).orderBy('date','desc').get();
-    if (snap.empty){
-      entriesBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีรายการในเดือนนี้</td></tr>`;
-      return;
-    }
-    snap.forEach(doc=>{
-      const d = doc.data();
-      const dt = d.date && d.date.toDate ? d.date.toDate() : new Date();
-      const filesLinks = (Array.isArray(d.receipts) && d.receipts.length)
-        ? d.receipts.map((r,i)=>`<a href="${r.webViewLink}" target="_blank" class="text-blue-600 hover:underline">ไฟล์ ${i+1}</a>`).join(' · ')
-        : '<span class="text-gray-400">—</span>';
-      const tr = document.createElement('tr');
-      tr.className='border-b';
-      tr.innerHTML = `
-        <td class="px-3 py-2 whitespace-nowrap">${dt.toLocaleDateString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${d.type}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.amount||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${d.note||'-'}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${filesLinks}</td>
-        <td class="px-3 py-2 whitespace-nowrap"><button data-del-entry="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button></td>
-      `;
-      entriesBody.appendChild(tr);
-    });
-
-    entriesBody.querySelectorAll('[data-del-entry]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        if (!confirm('ยืนยันการลบรายการนี้?')) return;
-        try { await db.collection('users').doc(auth.currentUser.uid).collection('entries').doc(btn.getAttribute('data-del-entry')).delete(); loadEntriesForPeriod(); }
-        catch(e){ alert(e.message); }
-      });
-    });
-  }catch(e){
-    entriesBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-red-600">${e.message}</td></tr>`;
+  const rows=await fetchEntries();
+  if(rows.length===0){
+    entriesBody.innerHTML=`<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีรายการ</td></tr>`;
+    return;
   }
-}
-
-function calculateTax(netIncome){
-  // ตัวอย่างขั้นเดียว – ปรับเป็นขั้นจริงได้ภายหลัง
-  return netIncome <= 150000 ? 0 : (netIncome - 150000) * 0.05;
-}
-
-function computeAggregates(rows, method, ratePct, cap){
-  let income = 0, expenseActual = 0, deduction = 0;
   rows.forEach(r=>{
-    if (r.type==='income') income += r.amount||0;
-    else if (r.type==='expense') expenseActual += r.amount||0;
-    else if (r.type==='deduction') deduction += r.amount||0;
+    const dt=r.date?.toDate?r.date.toDate():new Date();
+    const files=(r.receipts||[]).length
+      ? r.receipts.map((x,i)=>`<a class="text-indigo-600 hover:underline" target="_blank" href="${x.webViewLink}">ไฟล์ ${i+1}</a>`).join(' · ')
+      : '<span class="text-gray-400">—</span>';
+    const tr=document.createElement('tr');
+    tr.className='border-b';
+    tr.innerHTML=`
+      <td class="px-3 py-2 whitespace-nowrap">${dt.toLocaleDateString('th-TH')}</td>
+      <td class="px-3 py-2">${r.type}</td>
+      <td class="px-3 py-2 whitespace-nowrap">${(r.amount||0).toLocaleString('th-TH')}</td>
+      <td class="px-3 py-2">${r.note||'-'}</td>
+      <td class="px-3 py-2">${files}</td>
+      <td class="px-3 py-2"><button data-del="${r.id}" class="text-red-600 hover:underline text-xs">ลบ</button></td>
+    `;
+    entriesBody.appendChild(tr);
   });
-  const expenseLump = Math.min(income * (ratePct/100), cap||Infinity);
-  const expenseUsed = (method==='lumpsum') ? expenseLump : expenseActual;
-  const net = Math.max(0, income - expenseUsed - deduction);
-  const tax = calculateTax(net);
-  return { income, expenseActual, expenseUsed, deduction, net, tax };
+  entriesBody.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick=async()=>{
+      if(!confirm('ยืนยันการลบรายการนี้?')) return;
+      await db.collection('users').doc(auth.currentUser.uid).collection('entries').doc(btn.getAttribute('data-del')).delete();
+      await loadEntries();
+    };
+  });
 }
 
-async function fetchEntriesForYM(ym){
-  const snap = await db.collection('users').doc(auth.currentUser.uid).collection('entries').where('ym','==',ym).get();
-  return snap.docs.map(d=>({ id:d.id, ...d.data(), amount: Number(d.data().amount)||0 }));
+/* ---------- คำนวณภาษี ---------- */
+function calculateTax(net){
+  // ตัวอย่างง่าย (ขั้นจริงใส่ให้ได้ภายหลัง)
+  return net<=150000?0:(net-150000)*0.05;
+}
+function computeAggregates(rows, method, ratePct, cap){
+  let income=0, expenseActual=0, deduction=0;
+  rows.forEach(r=>{
+    if(r.type==='income') income+=r.amount||0;
+    else if(r.type==='expense') expenseActual+=r.amount||0;
+    else if(r.type==='deduction') deduction+=r.amount||0;
+  });
+  const expenseLump=Math.min(income*(ratePct/100), cap||Infinity);
+  const expenseUsed=(method==='lumpsum')?expenseLump:expenseActual;
+  const net=Math.max(0, income-expenseUsed-deduction);
+  const tax=calculateTax(net);
+  return {income,expenseActual,expenseUsed,deduction,net,tax};
+}
+function renderAggregate(ag){
+  document.getElementById('sumIncome').textContent=(ag.income||0).toLocaleString('th-TH');
+  document.getElementById('sumExpenseActual').textContent=(ag.expenseActual||0).toLocaleString('th-TH');
+  document.getElementById('sumExpenseUsed').textContent=(ag.expenseUsed||0).toLocaleString('th-TH');
+  document.getElementById('sumDeduction').textContent=(ag.deduction||0).toLocaleString('th-TH');
+  document.getElementById('sumTax').textContent=(ag.tax||0).toLocaleString('th-TH');
+
+  const ctx=document.getElementById('taxPieChart').getContext('2d');
+  if(window.taxChart instanceof Chart) window.taxChart.destroy();
+  window.taxChart=new Chart(ctx,{
+    type:'pie',
+    data:{labels:['ค่าใช้จ่ายที่ใช้คิด','ค่าลดหย่อน','รายได้สุทธิ'],datasets:[{data:[ag.expenseUsed,ag.deduction,Math.max(0,ag.income-ag.expenseUsed-ag.deduction)]}]},
+    options:{responsive:true,plugins:{legend:{position:'top'}}}
+  });
 }
 
-function renderAggregate(result){
-  document.getElementById('sumIncome').innerText = (result.income||0).toLocaleString('th-TH');
-  document.getElementById('sumExpenseActual').innerText = (result.expenseActual||0).toLocaleString('th-TH');
-  document.getElementById('sumExpenseUsed').innerText = (result.expenseUsed||0).toLocaleString('th-TH');
-  document.getElementById('sumDeduction').innerText = (result.deduction||0).toLocaleString('th-TH');
-  document.getElementById('sumTax').innerText = (result.tax||0).toLocaleString('th-TH');
+calcAggregateBtn.onclick=async()=>{
+  const rows=await fetchEntries();
+  const method=expenseMethod.value;
+  const rate=Number(lumpRate.value)||0;
+  const cap=Number(lumpCap.value)||Infinity;
+  const ag=computeAggregates(rows,method,rate,cap);
+  renderAggregate(ag);
+  document.getElementById('aggregateMsg').textContent='คำนวณสำเร็จ';
+  document.getElementById('aggregateMsg').className='text-sm text-green-600';
+};
+saveAggregateBtn.onclick=async()=>{
+  if(!auth?.currentUser){ alert('กรุณาเข้าสู่ระบบ'); return; }
+  const rows=await fetchEntries();
+  const method=expenseMethod.value;
+  const rate=Number(lumpRate.value)||0;
+  const cap=Number(lumpCap.value)||Infinity;
+  const ag=computeAggregates(rows,method,rate,cap);
+  const ym=periodMonth.value||'ALL';
+  await db.collection('users').doc(auth.currentUser.uid).collection('calculations').add({
+    period:ym, method, rate, cap,
+    income:ag.income, expenseUsed:ag.expenseUsed, deduction:ag.deduction, tax:ag.tax,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  document.getElementById('aggregateMsg').textContent='บันทึกผลรวมแล้ว';
+  document.getElementById('aggregateMsg').className='text-sm text-green-600';
+  loadHistory();
+};
 
-  const ctx = document.getElementById('taxPieChart').getContext('2d');
-  if (window.taxChart instanceof Chart) window.taxChart.destroy();
-  const d1 = result.expenseUsed, d2 = result.deduction, d3 = Math.max(0, result.income - result.expenseUsed - result.deduction);
-  window.taxChart = new Chart(ctx, { type:'pie', data:{ labels:['รายจ่ายที่ใช้คิด','ลดหย่อน','รายได้สุทธิ'], datasets:[{ data:[d1,d2,d3] }] }, options:{ responsive:true, plugins:{ legend:{position:'top'} } } });
-}
-
-calcAggregateBtn.addEventListener('click', async ()=>{
-  calcMsg.textContent='';
-  if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
-  const ym = periodMonth.value; if (!ym){ alert('กรุณาเลือกช่วงเดือน'); return; }
-  try{
-    const rows = await fetchEntriesForYM(ym);
-    const method = expenseMethod.value;
-    const rate = Number(lumpRate.value)||0;
-    const cap = Number(lumpCap.value)||Infinity;
-    const ag = computeAggregates(rows, method, rate, cap);
-    renderAggregate(ag);
-    calcMsg.textContent='คำนวณสำเร็จ'; calcMsg.className='text-green-600';
-  }catch(e){ calcMsg.textContent=e.message; calcMsg.className='text-red-600'; }
-});
-
-saveAggregateBtn.addEventListener('click', async ()=>{
-  if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
-  const ym = periodMonth.value; if (!ym){ alert('กรุณาเลือกช่วงเดือน'); return; }
-  try{
-    const rows = await fetchEntriesForYM(ym);
-    const method = expenseMethod.value;
-    const rate = Number(lumpRate.value)||0;
-    const cap = Number(lumpCap.value)||Infinity;
-    const ag = computeAggregates(rows, method, rate, cap);
-    const ref = await db.collection('users').doc(auth.currentUser.uid).collection('calculations').add({
-      period: ym,
-      method,
-      rate, cap,
-      income: ag.income, expenseUsed: ag.expenseUsed, deduction: ag.deduction, tax: ag.tax,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    calcMsg.textContent = 'บันทึกผลรวมแล้ว (ID: '+ref.id+')'; calcMsg.className='text-green-600';
-    loadHistory();
-  }catch(e){ calcMsg.textContent=e.message; calcMsg.className='text-red-600'; }
-});
-
-periodMonth.addEventListener('change', ()=> loadEntriesForPeriod());
-expenseMethod.addEventListener('change', ()=> calcAggregateBtn.click());
-
-/*********************
- * History (load & delete)
- *********************/
+/* ---------- History รวม ---------- */
 async function loadHistory(){
-  historyMsg.textContent=''; historyBody.innerHTML='';
-  if (!auth || !auth.currentUser) { historyMsg.textContent='กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
-  try {
-    const snap = await db.collection('users').doc(auth.currentUser.uid)
-      .collection('calculations').orderBy('createdAt','desc').limit(100).get();
-    if (snap.empty) {
-      historyBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีประวัติการคำนวณ</td></tr>`; return;
-    }
-    snap.forEach(doc=>{
-      const d = doc.data();
-      const dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : new Date();
-      const tr = document.createElement('tr'); tr.className='border-b';
-      tr.innerHTML = `
-        <td class="px-3 py-2 whitespace-nowrap">${(d.period||'-')}<div class="text-xs text-gray-500">${dt.toLocaleString('th-TH')}</div></td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.income||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.expenseUsed||0).toLocaleString('th-TH')}<div class="text-xs text-gray-500">(${d.method==='lumpsum'?'เหมาจ่าย':'ตามจริง'})</div></td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.deduction||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap font-semibold">${(d.tax||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 space-y-1"><button data-del="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button></td>`;
-      historyBody.appendChild(tr);
-    });
-    historyBody.querySelectorAll('[data-del]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        if (!confirm('ยืนยันการลบรายการนี้?')) return;
-        try { await db.collection('users').doc(auth.currentUser.uid).collection('calculations').doc(btn.getAttribute('data-del')).delete(); loadHistory(); } catch(e){ alert(e.message); }
-      });
-    });
-  } catch(e){ historyMsg.textContent = e.message; historyMsg.className='text-red-600'; }
+  const body=document.getElementById('historyBody');
+  const msg=document.getElementById('historyMsg');
+  body.innerHTML=''; msg.textContent='';
+  if(!auth?.currentUser){ msg.textContent='กรุณาเข้าสู่ระบบ'; msg.className='text-sm text-red-600'; return; }
+  const snap=await db.collection('users').doc(auth.currentUser.uid).collection('calculations').orderBy('createdAt','desc').limit(100).get();
+  if(snap.empty){ body.innerHTML=`<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีประวัติการคำนวณ</td></tr>`; return; }
+  snap.forEach(doc=>{
+    const d=doc.data(); const dt=d.createdAt?.toDate?d.createdAt.toDate():new Date();
+    const tr=document.createElement('tr'); tr.className='border-b';
+    tr.innerHTML=`
+      <td class="px-3 py-2">${d.period||'-'}<div class="text-xs text-gray-500">${dt.toLocaleString('th-TH')}</div></td>
+      <td class="px-3 py-2">${(d.income||0).toLocaleString('th-TH')}</td>
+      <td class="px-3 py-2">${(d.expenseUsed||0).toLocaleString('th-TH')}<div class="text-xs text-gray-500">(${d.method==='lumpsum'?'เหมาจ่าย':'ตามจริง'})</div></td>
+      <td class="px-3 py-2">${(d.deduction||0).toLocaleString('th-TH')}</td>
+      <td class="px-3 py-2 font-semibold">${(d.tax||0).toLocaleString('th-TH')}</td>
+      <td class="px-3 py-2"><button data-del="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick=async()=>{
+      if(!confirm('ยืนยันลบรายการนี้?'))return;
+      await db.collection('users').doc(auth.currentUser.uid).collection('calculations').doc(btn.getAttribute('data-del')).delete();
+      loadHistory();
+    };
+  });
 }
+document.getElementById('refreshHistory').onclick=loadHistory;
 
-document.getElementById('refreshHistory').addEventListener('click', loadHistory);
-
-/*********************
- * Export CSV / PDF / Open Drive folder
- *********************/
+/* ---------- Export ---------- */
 async function fetchAllCalculations() {
-  if (!auth || !auth.currentUser) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
-  const snap = await db.collection('users').doc(auth.currentUser.uid).collection('calculations').orderBy('createdAt','desc').get();
-  return snap.docs.map(d => { const v = d.data(); const dt = v.createdAt && v.createdAt.toDate ? v.createdAt.toDate() : null; return { id:d.id, date: dt ? dt.toLocaleString('th-TH') : '', income: v.income || 0, expense: v.expenseUsed || 0, deduction: v.deduction || 0, tax: v.tax || 0, period: v.period || '' }; });
+  if(!auth?.currentUser) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
+  const snap=await db.collection('users').doc(auth.currentUser.uid).collection('calculations').orderBy('createdAt','desc').get();
+  return snap.docs.map(d=>{const v=d.data();const dt=v.createdAt?.toDate?v.createdAt.toDate():null;return {period:v.period||'',date:dt?dt.toLocaleString('th-TH'):'',income:v.income||0,expense:v.expenseUsed||0,deduction:v.deduction||0,tax:v.tax||0};});
 }
+document.getElementById('downloadCsvBtn').onclick=async()=>{
+  const rows=await fetchAllCalculations();
+  const header=['ช่วง','วันที่บันทึก','รายได้','ค่าใช้จ่าย(ใช้คิด)','ลดหย่อน','ภาษี'];
+  const lines=[header.join(',')];
+  rows.forEach(r=>lines.push([`"${r.period}"`,`"${r.date}"`,r.income,r.expense,r.deduction,r.tax].join(',')));
+  const csv='\ufeff'+lines.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='taxonline_history.csv'; a.click(); URL.revokeObjectURL(url);
+};
+document.getElementById('downloadPdfBtn').onclick=async()=>{
+  const rows=await fetchAllCalculations(); if(!rows.length){ alert('ยังไม่มีข้อมูล'); return; }
+  const {jsPDF}=window.jspdf||{}; if(!jsPDF||!('autoTable' in (new jsPDF()))){ alert('ไม่พบ jsPDF หรือ autoTable'); return; }
+  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  doc.setFontSize(16); doc.text('สรุปประวัติการคำนวณภาษี (TaxOnline)',10,14);
+  doc.setFontSize(10); doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`,10,20);
+  const head=[['ช่วง','วันที่บันทึก','รายได้','ค่าใช้จ่าย(ใช้คิด)','ลดหย่อน','ภาษี']];
+  const body=rows.map(r=>[r.period,r.date,(r.income||0).toLocaleString('th-TH'),(r.expense||0).toLocaleString('th-TH'),(r.deduction||0).toLocaleString('th-TH'),(r.tax||0).toLocaleString('th-TH')]);
+  doc.autoTable({head,body,startY:26,styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[243,244,246],textColor:0}});
+  doc.save('taxonline_summary.pdf');
+};
 
-async function exportHistoryCSV() {
-  try {
-    const rows = await fetchAllCalculations();
-    const header = ['ช่วง','วันที่บันทึก','รายได้','รายจ่าย(ใช้คิด)','ลดหย่อน','ภาษี'];
-    const lines = [header.join(',')];
-    rows.forEach(r => { lines.push([`"${r.period}"`,`"${r.date}"`,r.income,r.expense,r.deduction,r.tax].join(',')); });
-    const csv = '\ufeff' + lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'taxonline_history.csv'; a.click(); URL.revokeObjectURL(url);
-  } catch(e) { alert(e.message || e); }
-}
-
-async function exportHistoryPDF() {
-  try {
-    const rows = await fetchAllCalculations();
-    if (!rows || rows.length === 0) { alert('ยังไม่มีข้อมูลประวัติ'); return; }
-    const { jsPDF } = window.jspdf || {}; if (!jsPDF || !('autoTable' in (new jsPDF()))) { alert('ไม่พบ jsPDF หรือปลั๊กอิน autoTable'); return; }
-    const u = auth && auth.currentUser; const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    doc.setFontSize(16); doc.text('สรุปประวัติการคำนวณภาษี (TaxOnline)', 10, 14);
-    doc.setFontSize(10); doc.text(`ผู้ใช้: ${u ? (u.displayName || u.email) : '-'}`, 10, 20); doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
-    const head = [['ช่วง','วันที่บันทึก','รายได้','รายจ่าย(ใช้คิด)','ลดหย่อน','ภาษี']];
-    const body = rows.map((r) => [ r.period || '', r.date || '', (r.income ?? 0).toLocaleString('th-TH'), (r.expense ?? 0).toLocaleString('th-TH'), (r.deduction ?? 0).toLocaleString('th-TH'), (r.tax ?? 0).toLocaleString('th-TH') ]);
-    doc.autoTable({ head, body, startY: 32, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: [243,244,246], textColor: 0 } });
-    doc.save('taxonline_summary.pdf');
-  } catch (e) { console.error(e); alert(e.message || e); }
-}
-
-async function openDriveFolder() { try { const { webViewLink } = await getOrCreateDriveFolder(); if (!webViewLink) { alert('ยังไม่มีโฟลเดอร์'); return; } window.open(webViewLink, '_blank'); } catch(e) { alert(e.message || e); } }
-
-document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
-document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF);
-document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
-
-/*********************
- * BOOT: Initialize Firebase AFTER SDK loads + add tests
- *********************/
-(async function boot(){
-  const diag = [];
-  try{
-    await waitForFirebase(10000); diag.push('[OK] Firebase SDK loaded');
-    const firebaseConfig = { apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk", authDomain: "tax-online-6afdd.firebaseapp.com", projectId: "tax-online-6afdd", appId: "1:959276043439:web:f358ce055687efea5d185a" };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore(); auth = firebase.auth(); diag.push('[OK] Firebase initialized');
-
-    // Auth wiring
-    loginForm.addEventListener('submit', (e)=>{ e.preventDefault(); const email = document.getElementById('loginEmail').value.trim(); const password = document.getElementById('loginPassword').value; auth.signInWithEmailAndPassword(email, password).then(()=>showOnly('calculator')).catch(err=>authMessage.textContent=err.message); });
-    signupForm.addEventListener('submit', (e)=>{ e.preventDefault(); const firstName = document.getElementById('signupFirstName').value.trim(); const lastName = document.getElementById('signupLastName').value.trim(); const email = document.getElementById('signupEmail').value.trim(); const password = document.getElementById('signupPassword').value; if (!firstName || !lastName || !email || !password) { authMessage.textContent='กรุณากรอกข้อมูลให้ครบ'; return; } auth.createUserWithEmailAndPassword(email, password).then(cred=>{ const user=cred.user; return user.updateProfile({ displayName: `${firstName} ${lastName}` }).then(()=> db.collection('users').doc(user.uid).set({ uid:user.uid, firstName, lastName, email, phone:'', address:'', createdAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true})); }).then(()=>{ showOnly('profile'); loadProfile(); }).catch(err=> authMessage.textContent=err.message ); });
-    document.getElementById('googleSignInBtn').addEventListener('click', ()=>{ const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider).then(async res=>{ const user = res.user; const docRef = db.collection('users').doc(user.uid); const snap = await docRef.get(); if (!snap.exists) { const [firstName, ...rest] = (user.displayName||'').split(' '); await docRef.set({ uid:user.uid, firstName:firstName||'', lastName:(rest||[]).join(' ')||'', email:user.email||'', phone:'', address:'', createdAt: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true}); } showOnly('calculator'); ensurePeriodDefaults(); loadEntriesForPeriod(); }).catch(err=> authMessage.textContent=err.message ); });
-    logoutBtn.addEventListener('click', ()=> auth.signOut());
-    auth.onAuthStateChanged((user)=>{ if (user) { userGreeting.classList.remove('hidden'); userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`; loginNav.classList.add('hidden'); logoutBtn.classList.remove('hidden'); } else { userGreeting.classList.add('hidden'); loginNav.classList.remove('hidden'); logoutBtn.classList.add('hidden'); showOnly('welcome'); } });
-
-    // Default month
-    ensurePeriodDefaults();
-
-    // --- Tests (lightweight) ---
-    const tests = [];
-    (function(){
-      const rows = [ {type:'income', amount:100000}, {type:'expense', amount:10000}, {type:'deduction', amount:20000} ];
-      const t1 = computeAggregates(rows,'actual',50,999999); // expect expenseUsed = 10000, net=100k-10k-20k=70k
-      tests.push(t1.expenseUsed===10000 && t1.net===70000);
-      const t2 = computeAggregates(rows,'lumpsum',50,30000); // expenseUsed = min(50k,30k)=30k, net=100k-30k-20k=50k
-      tests.push(t2.expenseUsed===30000 && t2.net===50000);
-      const allPass = tests.every(Boolean);
-      diag.push(allPass? '[OK] aggregation tests passed' : '[X] aggregation tests failed: '+JSON.stringify({t1,t2}));
-    })();
-
-    const checks = [ ['window.firebase', !!window.firebase], ['firebase.apps.length', firebase.apps && firebase.apps.length>0], ['firebase.auth', !!firebase.auth], ['firebase.firestore', !!firebase.firestore], ['Chart', !!window.Chart], ['jsPDF', !!(window.jspdf && window.jspdf.jsPDF)], ['GIS (google.accounts)', !!(window.google && google.accounts)] ];
-    checks.forEach(([k,v])=> diag.push(`${v?'[OK]':'[X]'} ${k}`));
-    showDiag(diag);
-  }catch(err){ console.error(err); showDiag(['[X] boot failed', String(err)]); alert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ: '+ err.message); }
+/* ---------- Tests (Mini) ---------- */
+(function miniTests(){
+  const rows=[{type:'income',amount:100000},{type:'expense',amount:10000},{type:'deduction',amount:20000}];
+  const t1=computeAggregates(rows,'actual',50,999999); // expenseUsed=10000, net=70k
+  const t2=computeAggregates(rows,'lumpsum',50,30000); // expenseUsed=min(50k,30k)=30k, net=50k
+  console.assert(t1.expenseUsed===10000 && t1.net===70000,'Test1 failed',t1);
+  console.assert(t2.expenseUsed===30000 && t2.net===50000,'Test2 failed',t2);
 })();
 </script>
-
 </body>
 </html>
