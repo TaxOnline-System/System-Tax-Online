@@ -7,7 +7,7 @@
 
 <!-- Tailwind -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
-<!-- Chart.js -->
+<!-- Chart.js (เผื่ออนาคต) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- jsPDF + autoTable -->
@@ -845,28 +845,30 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* --- ฟอนต์ไทยสำหรับ jsPDF (พร้อมใช้) --- */
+/* --- ฟอนต์ไทยสำหรับ jsPDF (เวอร์ชัน Product-Ready) --- */
 async function ensureThaiFont() {
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) throw new Error('jsPDF ยังไม่พร้อม');
 
   const FONT_NAME = 'NotoSansThai';
   const VFS_FILE  = 'NotoSansThai-Regular.ttf';
-  const VFS_KEY   = 'pdf_font_notosansthai_vfs';
+  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v1'; // versioned cache key
 
+  // ฟอนต์ถูก register แล้วหรือยัง
   try { new jsPDF().setFont(FONT_NAME); return; } catch (_) {}
 
+  // ลองจาก cache
   const cached = localStorage.getItem(VFS_KEY);
   if (cached) {
     jsPDF.API.addFileToVFS(VFS_FILE, cached);
     jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
-    return;
+    try { new jsPDF().setFont(FONT_NAME); return; } catch(_) {}
   }
 
-  // ฟอนต์ไทย (มี CORS เปิด) — เปลี่ยนได้ตามต้องการ
+  // โหลดฟอนต์ (มี CORS)
   const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf';
   const res = await fetch(FONT_URL, { mode: 'cors' });
-  if (!res.ok) throw new Error('โหลดฟอนต์ไทยไม่สำเร็จ: ' + res.status);
+  if (!res.ok) throw new Error('โหลดฟอนต์ไทยไม่สำเร็จ: HTTP ' + res.status);
 
   const blob = await res.blob();
   const base64 = await new Promise((resolve, reject) => {
@@ -879,6 +881,10 @@ async function ensureThaiFont() {
   jsPDF.API.addFileToVFS(VFS_FILE, base64);
   jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
   localStorage.setItem(VFS_KEY, base64);
+
+  // test อีกครั้ง
+  try { new jsPDF().setFont(FONT_NAME); }
+  catch (e) { throw new Error('ลงทะเบียนฟอนต์ไทยไม่สำเร็จ: ' + e.message); }
 }
 
 /* --- PDF (ไทย + ลิงก์คลิกได้ + ตัดซ้ำ) --- */
@@ -919,12 +925,11 @@ async function exportHistoryPDF() {
     doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
 
     // วิธีรายจ่ายรวม
-    const methodLine = cfg.method==='lumpsum'
+    const cfgText = cfg.method==='lumpsum'
       ? `วิธีรายจ่าย: เหมาจ่าย ${cfg.percent||0}%${cfg.cap?` (เพดาน ${Number(cfg.cap).toLocaleString('th-TH')} บ.)`:''}`
       : 'วิธีรายจ่าย: ตามจริง';
-
     doc.setFontSize(11);
-    doc.text(methodLine, 10, 32);
+    doc.text(cfgText, 10, 32);
     doc.text(`รายได้รวม: ${sumIncome.toLocaleString('th-TH')}  รายจ่ายรวม: ${sumExpense.toLocaleString('th-TH')}  ลดหย่อนรวม: ${sumDeduct.toLocaleString('th-TH')}`, 10, 38);
     doc.text(`เงินได้สุทธิ: ${sumNet.toLocaleString('th-TH')}  ภาษีรวม (ประมาณ): ${sumTax.toLocaleString('th-TH')}`, 10, 44);
 
@@ -947,7 +952,7 @@ async function exportHistoryPDF() {
       head, body,
       startY: 50,
       styles: { font: FONT, fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [243,244,246], textColor: 0, font: FONT, fontStyle: 'normal' },
+      headStyles: { font: FONT, fontStyle: 'normal', fillColor: [243,244,246], textColor: 0 },
       columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:26}, 2:{cellWidth:32}, 3:{cellWidth:26}, 4:{cellWidth:26}, 5:{cellWidth:'auto'} },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();
@@ -972,10 +977,9 @@ async function exportHistoryPDF() {
       doc.setFontSize(11);
       doc.text('ลิงก์ใบเสร็จ (คลิกได้):', 10, y);
       y += 6; doc.setFontSize(10);
-      const left = 10, step = 6;
       for (const item of links) {
-        doc.textWithLink(item.label, left, y, { url: item.url });
-        y += step;
+        doc.textWithLink(item.label, 10, y, { url: item.url });
+        y += 6;
         if (y > 280) { doc.addPage(); doc.setFont(FONT,'normal'); y = 14; }
       }
     }
@@ -1015,7 +1019,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     auth = firebase.auth();
-    diag.push('[OK] Firebase initialized, Firestore & Auth ready');
+    diag.push('[OK] Firebase initialized, Firestore & Auth ready]');
 
     // Auth flows
     const loginForm = document.getElementById('loginForm');
