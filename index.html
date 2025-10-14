@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TaxOnline (Drive) - ระบบคำนวณภาษี + อัปโหลดใบเสร็จไป Google Drive</title>
+<title>TaxOnline (Drive) - ระบบบันทึกรายการ + คำนวณภาษีจากประวัติ</title>
 
 <!-- Tailwind -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
@@ -50,8 +50,8 @@
     </div>
     <nav class="text-center sm:text-right">
       <button class="nav-link text-pink-600 hover:underline font-semibold" data-nav="welcome">หน้าแรก</button>
-      <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">คำนวณภาษี</button>
-      <button class="nav-link text-gray-700 hover:underline" data-nav="history">ประวัติ</button>
+      <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">บันทึกรายการ</button>
+      <button class="nav-link text-gray-700 hover:underline" data-nav="history">คำนวณภาษี (จากประวัติ)</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="profile">โปรไฟล์</button>
       <button id="loginNav" class="nav-link text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
       <button id="logoutBtn" class="nav-link text-red-600 hover:underline hidden">ออกจากระบบ</button>
@@ -72,12 +72,12 @@
 
   <!-- Welcome -->
   <section id="welcomeSection" class="fade-in text-center px-6">
-    <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 mb-4">คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!</h2>
+    <h2 class="text-3xl sm:text-4xl font-bold text-pink-700 mb-4">จัดเก็บรายการ + คำนวณภาษีรวมจากประวัติ</h2>
     <p class="text-gray-700 text-base sm:text-lg max-w-2xl mx-auto">
-      อัปโหลดใบเสร็จขึ้น <b>Google Drive ของคุณเอง</b> (ฟรี) และบันทึกประวัติไว้ใน Firestore — เหมาะสำหรับแนบประกอบการยื่นภาษี
+      เพิ่มรายการรายได้/รายจ่าย/ลดหย่อนในหน้า <b>บันทึกรายการ</b> และไปคำนวณภาษีรวมทั้งหมดในหน้า <b>คำนวณภาษี (จากประวัติ)</b>
     </p>
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
-      <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มคำนวณเลย</button>
+      <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มบันทึกรายการ</button>
       <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
     </div>
   </section>
@@ -158,23 +158,49 @@
     </div>
   </section>
 
-  <!-- Calculator -->
+  <!-- Calculator (เปลี่ยนเป็น "บันทึกรายการ") -->
   <section id="calculatorSection" class="hidden fade-in px-4">
     <div class="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-      <h3 class="text-xl sm:text-2xl font-semibold text-center text-blue-600 mb-4">ฟอร์มคำนวณภาษี</h3>
-      <form class="space-y-4" id="taxForm">
+      <h3 class="text-xl sm:text-2xl font-semibold text-center text-blue-600 mb-4">บันทึกรายการรายได้/รายจ่าย/ลดหย่อน</h3>
+      <form class="space-y-4" id="recordForm">
         <div>
-          <label class="block text-sm font-medium text-gray-800">รายได้ทั้งหมด (บาท)</label>
-          <input type="number" id="income" class="w-full p-2 border rounded-lg"/>
+          <label class="block text-sm font-medium text-gray-800">รายได้ครั้งนี้ (บาท)</label>
+          <input type="number" id="rec_income" class="w-full p-2 border rounded-lg"/>
         </div>
+
         <div>
-          <label class="block text-sm font-medium text-gray-800">รายจ่ายทั้งหมด (บาท)</label>
-          <input type="number" id="expense" class="w-full p-2 border rounded-lg"/>
+          <label class="block text-sm font-medium text-gray-800 mb-1">วิธีคิดรายจ่าย</label>
+          <div class="flex items-center gap-4">
+            <label class="inline-flex items-center gap-2"><input type="radio" name="expenseMethod" value="actual" checked> ตามจริง</label>
+            <label class="inline-flex items-center gap-2"><input type="radio" name="expenseMethod" value="lumpsum"> เหมาจ่าย</label>
+          </div>
         </div>
+
+        <!-- ตามจริง -->
+        <div id="actualWrap">
+          <label class="block text-sm font-medium text-gray-800">รายจ่ายตามจริง (บาท)</label>
+          <input type="number" id="rec_expense" class="w-full p-2 border rounded-lg"/>
+        </div>
+
+        <!-- เหมาจ่าย -->
+        <div id="lumpsumWrap" class="hidden">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-800">อัตราเหมาจ่าย (%)</label>
+              <input type="number" id="rec_lumpsumPercent" value="50" class="w-full p-2 border rounded-lg"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-800">เพดานเหมาจ่าย (บาท) <span class="text-gray-400 text-xs">(ไม่บังคับ)</span></label>
+              <input type="number" id="rec_lumpsumCap" placeholder="เช่น 100000" class="w-full p-2 border rounded-lg"/>
+            </div>
+          </div>
+        </div>
+
         <div>
-          <label class="block text-sm font-medium text-gray-800">ค่าลดหย่อน (บาท)</label>
-          <input type="number" id="deduction" value="60000" class="w-full p-2 border rounded-lg"/>
+          <label class="block text-sm font-medium text-gray-800">ค่าลดหย่อนครั้งนี้ (บาท)</label>
+          <input type="number" id="rec_deduction" value="60000" class="w-full p-2 border rounded-lg"/>
         </div>
+
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-800">อัปโหลดใบเสร็จ (อัปขึ้น Google Drive ของคุณ)</label>
           <input type="file" id="receiptUpload" accept="image/*,.pdf" multiple
@@ -183,18 +209,18 @@
           <div id="fileInfo" class="mt-2 text-sm text-gray-700"></div>
           <div id="previewArea" class="mt-2 grid grid-cols-3 gap-2"></div>
         </div>
-        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition">คำนวณภาษี</button>
+
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-blue-700 transition">บันทึกรายการ</button>
       </form>
-      <div class="mt-6"><canvas id="taxPieChart"></canvas></div>
-      <p id="calcMsg" class="text-sm mt-3"></p>
+      <p id="saveMsg" class="text-sm mt-3"></p>
     </div>
   </section>
 
-  <!-- History -->
+  <!-- History (คำนวณภาษีจากประวัติ) -->
   <section id="historySection" class="hidden fade-in px-4">
     <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-2xl font-semibold text-pink-600">ประวัติการคำนวณ</h3>
+        <h3 class="text-2xl font-semibold text-pink-600">คำนวณภาษีจากประวัติ</h3>
         <div class="flex gap-2">
           <button id="refreshHistory" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">รีเฟรช</button>
           <button id="downloadCsvBtn" class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm">ดาวน์โหลด CSV</button>
@@ -202,19 +228,53 @@
           <button id="openDriveFolderBtn" class="px-3 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-sm">เปิดโฟลเดอร์ Drive</button>
         </div>
       </div>
+
+      <!-- แผงสรุปรวม -->
+      <div id="summaryPanel" class="mb-4 p-4 rounded-xl bg-gray-50 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+        <div>
+          <div class="text-gray-500">รายได้รวม</div>
+          <div id="sumIncome" class="text-xl font-semibold">—</div>
+        </div>
+        <div>
+          <div class="text-gray-500">รายจ่ายรวม (ตามวิธีของแต่ละรายการ)</div>
+          <div id="sumExpense" class="text-xl font-semibold">—</div>
+        </div>
+        <div>
+          <div class="text-gray-500">ลดหย่อนรวม</div>
+          <div id="sumDeduct" class="text-xl font-semibold">—</div>
+        </div>
+        <div>
+          <div class="text-gray-500">ภาษีที่ต้องชำระ (ประมาณ)</div>
+          <div id="sumTax" class="text-2xl font-bold text-red-600">—</div>
+        </div>
+      </div>
+
       <div class="overflow-auto">
         <table class="min-w-full text-sm">
           <thead>
             <tr class="text-left bg-gray-50">
               <th class="px-3 py-2">วันที่</th>
               <th class="px-3 py-2">รายได้</th>
-              <th class="px-3 py-2">รายจ่าย</th>
+              <th class="px-3 py-2">วิธีรายจ่าย</th>
+              <th class="px-3 py-2">รายจ่ายใช้คำนวณ</th>
               <th class="px-3 py-2">ลดหย่อน</th>
-              <th class="px-3 py-2">ภาษี</th>
-              <th class="px-3 py-2">จัดการ</th>
+              <th class="px-3 py-2">สุทธิ (ต่อรายการ)</th>
+              <th class="px-3 py-2">ไฟล์</th>
+              <th class="px-3 py-2">ลบ</th>
             </tr>
           </thead>
           <tbody id="historyBody"></tbody>
+          <tfoot>
+            <tr class="bg-gray-50 font-semibold">
+              <td class="px-3 py-2">รวม</td>
+              <td class="px-3 py-2" id="ftIncome">—</td>
+              <td class="px-3 py-2">—</td>
+              <td class="px-3 py-2" id="ftExpense">—</td>
+              <td class="px-3 py-2" id="ftDeduct">—</td>
+              <td class="px-3 py-2" id="ftNet">—</td>
+              <td class="px-3 py-2" colspan="2">ภาษีรวม (ประมาณ): <span id="ftTax" class="font-bold text-red-600">—</span></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       <p id="historyMsg" class="text-sm mt-3"></p>
@@ -427,7 +487,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 const historyBody = document.getElementById('historyBody');
 const historyMsg = document.getElementById('historyMsg');
 const profileMsg = document.getElementById('profileMsg');
-const calcMsg = document.getElementById('calcMsg');
+const saveMsg = document.getElementById('saveMsg');
 
 function showOnly(sectionKey){
   Object.keys(sections).forEach(k=>{
@@ -476,7 +536,7 @@ signupTab.addEventListener('click', ()=>{ signupForm.classList.remove('hidden');
 loginTab.click();
 
 /*********************
- * Profile (functions reuse auth/db after init)
+ * Profile
  *********************/
 const profileForm = document.getElementById('profileForm');
 const profileFirstName = document.getElementById('profileFirstName');
@@ -565,47 +625,79 @@ document.getElementById('receiptUpload').addEventListener('change', function(){
 });
 
 /*********************
- * Tax Calculator + Save + Upload (Drive)
+ * Tax utils (ใหม่: ใช้ก้าวหน้า และคำนวณจากประวัติ)
  *********************/
-function calculateTax(income, expense, deduction){
-  const net = income - expense - deduction;
-  return net <= 150000 ? 0 : net * 0.05; // ขั้นเดียว (ตัวอย่าง)
+function thaiProgressiveTax(net){
+  // net: เงินได้สุทธิทั้งปี (บาท)
+  if (net <= 0) return 0;
+  const brackets = [
+    { limit: 150000, rate: 0.00 },
+    { limit: 300000, rate: 0.05 },
+    { limit: 500000, rate: 0.10 },
+    { limit: 750000, rate: 0.15 },
+    { limit: 1000000, rate: 0.20 },
+    { limit: 2000000, rate: 0.25 },
+    { limit: 5000000, rate: 0.30 },
+    { limit: Infinity, rate: 0.35 }
+  ];
+  let tax = 0; let prev = 0;
+  for (const b of brackets){
+    const upper = Math.min(net, b.limit);
+    if (upper > prev) tax += (upper - prev) * b.rate;
+    if (net <= b.limit) break; prev = b.limit;
+  }
+  return tax;
 }
 
-document.getElementById('taxForm').addEventListener('submit', async (e)=>{
+function computeExpenseUsed(row){
+  const income = Number(row.income||0);
+  const method = row.expenseMethod || 'actual';
+  if (method === 'lumpsum'){
+    const p = Math.max(0, Math.min(100, Number(row.lumpsumPercent||50)));
+    const cap = Number(row.lumpsumCap);
+    const byPercent = income * (p/100);
+    return (isNaN(cap) || cap<=0) ? byPercent : Math.min(byPercent, cap);
+  }
+  return Number(row.expense||0);
+}
+
+/*********************
+ * บันทึกรายการ (แทนที่การคำนวณเดิม)
+ *********************/
+const recordForm = document.getElementById('recordForm');
+recordForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const income = Number(document.getElementById('income').value);
-  const expense = Number(document.getElementById('expense').value);
-  const deduction = Number(document.getElementById('deduction').value);
+  const income = Number(document.getElementById('rec_income').value);
+  const expense = Number(document.getElementById('rec_expense').value);
+  const deduction = Number(document.getElementById('rec_deduction').value);
+  const method = (document.querySelector('input[name="expenseMethod"]:checked')||{}).value || 'actual';
+  const lumpsumPercent = Number(document.getElementById('rec_lumpsumPercent').value);
+  const lumpsumCap = Number(document.getElementById('rec_lumpsumCap').value);
   const fileInput = document.getElementById('receiptUpload');
   const files = fileInput?.files || [];
 
-  if (Number.isNaN(income) || Number.isNaN(expense) || Number.isNaN(deduction)) { alert('กรุณาใส่ตัวเลขให้ครบ'); return; }
-  const tax = Number(calculateTax(income, expense, deduction)) || 0;
+  if (Number.isNaN(income)) { alert('กรุณาใส่รายได้เป็นตัวเลข'); return; }
+  if (method==='actual' && Number.isNaN(expense)) { alert('กรุณาใส่รายจ่ายตามจริงเป็นตัวเลข'); return; }
+  if (Number.isNaN(deduction)) { alert('กรุณาใส่ค่าลดหย่อนเป็นตัวเลข'); return; }
 
-  // Pie
-  const ctx = document.getElementById('taxPieChart').getContext('2d');
-  if (window.taxChart instanceof Chart) window.taxChart.destroy();
-  const needTax = (income - expense - deduction) > 150000 ? 100 : 0;
-  window.taxChart = new Chart(ctx, {
-    type:'pie',
-    data:{ labels:['เสียภาษี','ไม่ต้องเสียภาษี'], datasets:[{ data:[needTax, 100-needTax], backgroundColor:['#ef4444','#22c55e'] }]},
-    options:{ responsive:true, plugins:{ legend:{position:'top'}, title:{display:true, text:`ภาษีที่ต้องชำระ: ${tax.toLocaleString('th-TH')} บาท` } } }
-  });
-
-  calcMsg.textContent = '';
-
-  if (!auth || !auth.currentUser) { calcMsg.textContent='ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึก/อัปโหลด'; calcMsg.className='text-yellow-600 text-sm mt-3'; return; }
+  if (!auth || !auth.currentUser){ saveMsg.textContent='ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึก/อัปโหลด'; saveMsg.className='text-yellow-600 text-sm mt-3'; return; }
 
   try {
-    // Firestore
-    const docRef = await db.collection('users').doc(auth.currentUser.uid).collection('calculations').add({
-      income: income||0, expense: expense||0, deduction: deduction||0, tax: tax||0,
+    // Firestore: บันทึกรายการ (ไม่คำนวณภาษีที่นี่)
+    const payload = {
+      income: income||0,
+      expenseMethod: method,
+      expense: method==='actual' ? (expense||0) : 0,
+      lumpsumPercent: method==='lumpsum' ? (lumpsumPercent||50) : null,
+      lumpsumCap: method==='lumpsum' && !Number.isNaN(lumpsumCap) && lumpsumCap>0 ? lumpsumCap : null,
+      deduction: deduction||0,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       receipts: []
-    });
+    };
 
-    // Drive
+    const docRef = await db.collection('users').doc(auth.currentUser.uid).collection('calculations').add(payload);
+
+    // Drive uploads (ถ้ามี)
     let uploaded = [];
     if (files.length > 0) {
       await ensureDriveToken();
@@ -613,80 +705,37 @@ document.getElementById('taxForm').addEventListener('submit', async (e)=>{
       uploaded = await uploadFilesToDrive(files, folderInfo);
     }
 
-    // update receipts
     if (uploaded.length) await docRef.update({ receipts: uploaded });
 
-    if (fileInput) fileInput.value='';
-    calcMsg.textContent = uploaded.length ? `บันทึกและอัปโหลดไป Google Drive แล้ว (${uploaded.length} ไฟล์)` : 'บันทึกประวัติการคำนวณแล้ว';
-    calcMsg.className = 'text-green-600 text-sm mt-3';
+    // reset form
+    recordForm.reset();
+    document.getElementById('rec_lumpsumPercent').value = 50;
+    document.getElementById('rec_lumpsumCap').value = '';
+    document.getElementById('fileInfo').textContent='';
+    document.getElementById('previewArea').innerHTML='';
+
+    saveMsg.textContent = uploaded.length ? `บันทึกรายการแล้ว และอัปโหลดไป Google Drive (${uploaded.length} ไฟล์)` : 'บันทึกรายการสำเร็จ';
+    saveMsg.className = 'text-green-600 text-sm mt-3';
   } catch(e){
     console.error(e);
-    calcMsg.textContent = `บันทึก/อัปโหลดล้มเหลว: ${e.message||''}`;
-    calcMsg.className = 'text-red-600 text-sm mt-3';
+    saveMsg.textContent = `บันทึก/อัปโหลดล้มเหลว: ${e.message||''}`;
+    saveMsg.className = 'text-red-600 text-sm mt-3';
   }
 });
 
-/*********************
- * History (load & delete)
- *********************/
-async function loadHistory(){
-  historyMsg.textContent=''; historyBody.innerHTML='';
-  if (!auth || !auth.currentUser) { historyMsg.textContent='กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
-
-  try {
-    const snap = await db.collection('users').doc(auth.currentUser.uid)
-      .collection('calculations').orderBy('createdAt','desc').limit(100).get();
-
-    if (snap.empty) {
-      historyBody.innerHTML = `<tr><td colspan="6" class="px-3 py-3 text-center text-gray-500">ยังไม่มีประวัติการคำนวณ</td></tr>`;
-      return;
-    }
-
-    snap.forEach(doc=>{
-      const d = doc.data();
-      const dt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : new Date();
-
-      const nFiles = Array.isArray(d.receipts) ? d.receipts.length : 0;
-      const filesLinks = nFiles
-        ? d.receipts.map((r,i)=>`<a href="${r.webViewLink}" target="_blank" class="text-blue-600 hover:underline">ไฟล์ ${i+1}</a>`).join(' · ')
-        : '<span class="text-gray-400">—</span>';
-
-      const tr = document.createElement('tr');
-      tr.className='border-b';
-      tr.innerHTML = `
-        <td class="px-3 py-2 whitespace-nowrap">${dt.toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.income||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.expense||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">${(d.deduction||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 whitespace-nowrap font-semibold">${(d.tax||0).toLocaleString('th-TH')}</td>
-        <td class="px-3 py-2 space-y-1">
-          <button data-del="${doc.id}" class="text-red-600 hover:underline text-xs">ลบ</button>
-          <div class="text-xs">${filesLinks}</div>
-        </td>
-      `;
-      historyBody.appendChild(tr);
-    });
-
-    historyBody.querySelectorAll('[data-del]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        if (!confirm('ยืนยันการลบรายการนี้?')) return;
-        try {
-          const calcId = btn.getAttribute('data-del');
-          await db.collection('users').doc(auth.currentUser.uid).collection('calculations').doc(calcId).delete();
-          loadHistory();
-        } catch(e){ alert(e.message); }
-      });
-    });
-
-  } catch(e){
-    historyMsg.textContent = e.message; historyMsg.className='text-red-600';
-  }
-}
-
-document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+// toggle เหมาจ่าย/ตามจริง
+const actualWrap = document.getElementById('actualWrap');
+const lumpsumWrap = document.getElementById('lumpsumWrap');
+document.querySelectorAll('input[name="expenseMethod"]').forEach(el=>{
+  el.addEventListener('change', ()=>{
+    const v = (document.querySelector('input[name="expenseMethod"]:checked')||{}).value;
+    if (v==='lumpsum'){ lumpsumWrap.classList.remove('hidden'); actualWrap.classList.add('hidden'); }
+    else { actualWrap.classList.remove('hidden'); lumpsumWrap.classList.add('hidden'); }
+  });
+});
 
 /*********************
- * Export CSV / PDF / Open Drive folder
+ * History (load, render, aggregate tax)
  *********************/
 async function fetchAllCalculations() {
   if (!auth || !auth.currentUser) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
@@ -699,27 +748,112 @@ async function fetchAllCalculations() {
       id: d.id,
       date: dt ? dt.toLocaleString('th-TH') : '',
       income: v.income || 0,
+      expenseMethod: v.expenseMethod || 'actual',
       expense: v.expense || 0,
+      lumpsumPercent: v.lumpsumPercent ?? null,
+      lumpsumCap: v.lumpsumCap ?? null,
       deduction: v.deduction || 0,
-      tax: v.tax || 0,
       receipts: Array.isArray(v.receipts) ? v.receipts : []
     };
   });
 }
 
+function renderSummary(rows){
+  let sumIncome=0, sumExpense=0, sumDeduct=0, sumNet=0;
+  rows.forEach(r=>{
+    const inc = Number(r.income||0);
+    const expUsed = computeExpenseUsed(r);
+    const ded = Number(r.deduction||0);
+    sumIncome += inc; sumExpense += expUsed; sumDeduct += ded; sumNet += Math.max(0, inc - expUsed - ded);
+  });
+  const tax = thaiProgressiveTax(sumNet);
+  document.getElementById('sumIncome').textContent = sumIncome.toLocaleString('th-TH');
+  document.getElementById('sumExpense').textContent = sumExpense.toLocaleString('th-TH');
+  document.getElementById('sumDeduct').textContent = sumDeduct.toLocaleString('th-TH');
+  document.getElementById('sumTax').textContent = tax.toLocaleString('th-TH');
+
+  // Footer
+  document.getElementById('ftIncome').textContent = sumIncome.toLocaleString('th-TH');
+  document.getElementById('ftExpense').textContent = sumExpense.toLocaleString('th-TH');
+  document.getElementById('ftDeduct').textContent = sumDeduct.toLocaleString('th-TH');
+  document.getElementById('ftNet').textContent = sumNet.toLocaleString('th-TH');
+  document.getElementById('ftTax').textContent = tax.toLocaleString('th-TH');
+}
+
+async function loadHistory(){
+  historyMsg.textContent=''; historyBody.innerHTML='';
+  if (!auth || !auth.currentUser) { historyMsg.textContent='กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
+
+  try {
+    const rows = await fetchAllCalculations();
+    if (!rows.length){
+      historyBody.innerHTML = `<tr><td colspan="8" class="px-3 py-3 text-center text-gray-500">ยังไม่มีรายการ</td></tr>`;
+      renderSummary([]);
+      return;
+    }
+
+    rows.forEach(r=>{
+      const expUsed = computeExpenseUsed(r);
+      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
+      const filesLinks = (r.receipts && r.receipts.length)
+        ? r.receipts.map((x,i)=>`<a href="${x.webViewLink}" target="_blank" class="text-blue-600 hover:underline">ไฟล์ ${i+1}</a>`).join(' · ')
+        : '<span class="text-gray-400">—</span>';
+
+      const tr = document.createElement('tr');
+      tr.className='border-b';
+      tr.innerHTML = `
+        <td class="px-3 py-2 whitespace-nowrap">${r.date||''}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${(r.income||0).toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${r.expenseMethod==='lumpsum' ? `เหมาจ่าย${r.lumpsumPercent?` ${r.lumpsumPercent}%`:''}${r.lumpsumCap?` (เพดาน ${(r.lumpsumCap).toLocaleString('th-TH')} บ.)`:''}` : 'ตามจริง'}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${expUsed.toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${(r.deduction||0).toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap font-semibold">${net.toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${filesLinks}</td>
+        <td class="px-3 py-2 whitespace-nowrap"><button data-del="${r.id}" class="text-red-600 hover:underline text-xs">ลบ</button></td>
+      `;
+      historyBody.appendChild(tr);
+    });
+
+    // delete handlers
+    historyBody.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if (!confirm('ยืนยันการลบรายการนี้?')) return;
+        try {
+          const calcId = btn.getAttribute('data-del');
+          await db.collection('users').doc(auth.currentUser.uid).collection('calculations').doc(calcId).delete();
+          loadHistory();
+        } catch(e){ alert(e.message); }
+      });
+    });
+
+    renderSummary(rows);
+  } catch(e){
+    historyMsg.textContent = e.message; historyMsg.className='text-red-600';
+  }
+}
+
+document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+
+/*********************
+ * Export CSV / PDF / Open Drive folder (อัปเดตคอลัมน์)
+ *********************/
 async function exportHistoryCSV() {
   try {
     const rows = await fetchAllCalculations();
-    const header = ['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี','ไฟล์ใบเสร็จ(ลิงก์)'];
+    const header = ['วันที่','รายได้','วิธีรายจ่าย','รายจ่ายใช้คำนวณ','ลดหย่อน','สุทธิ(ต่อรายการ)','ไฟล์ใบเสร็จ(ลิงก์)'];
     const lines = [header.join(',')];
     rows.forEach(r => {
+      const expUsed = computeExpenseUsed(r);
+      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
+      const methodText = r.expenseMethod==='lumpsum' ? `เหมาจ่าย ${r.lumpsumPercent||''}%${r.lumpsumCap?` เพดาน ${r.lumpsumCap}`:''}` : 'ตามจริง';
       const links = r.receipts.map((x,i) => x.webViewLink||'').join(' | ');
       lines.push([
-        `"${r.date}"`,
-        r.income,
-        r.expense,
-        r.deduction,
-        r.tax,
+        `"${r.date||''}"`,
+        r.income||0,
+        `"${methodText}"`,
+        expUsed,
+        r.deduction||0,
+        net,
         `"${links}"`
       ].join(','));
     });
@@ -735,38 +869,51 @@ async function exportHistoryCSV() {
 async function exportHistoryPDF() {
   try {
     const rows = await fetchAllCalculations();
-    if (!rows || rows.length === 0) { alert('ยังไม่มีข้อมูลประวัติ'); return; }
-
     const { jsPDF } = window.jspdf || {};
+    if (!rows || !rows.length) { alert('ยังไม่มีข้อมูลประวัติ'); return; }
     if (!jsPDF || !('autoTable' in (new jsPDF()))) {
       alert('ไม่พบ jsPDF หรือปลั๊กอิน autoTable'); return;
     }
 
+    // สรุปรวม
+    let sumIncome=0,sumExpense=0,sumDeduct=0,sumNet=0;
+    rows.forEach(r=>{ const e=computeExpenseUsed(r); sumIncome+=r.income||0; sumExpense+=e; sumDeduct+=r.deduction||0; sumNet+=Math.max(0,(r.income||0)-e-(r.deduction||0)); });
+    const sumTax = thaiProgressiveTax(sumNet);
+
     const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
     doc.setFontSize(16);
-    doc.text('สรุปประวัติการคำนวณภาษี (TaxOnline)', 10, 14);
+    doc.text('สรุปประวัติและภาษีรวม (TaxOnline)', 10, 14);
     doc.setFontSize(10);
     const u = auth && auth.currentUser; 
     doc.text(`ผู้ใช้: ${u ? (u.displayName || u.email) : '-'}`, 10, 20);
     doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
 
-    const head = [['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี','ใบเสร็จ']];
-    const body = rows.map((r) => [
-      r.date || '',
-      (r.income ?? 0).toLocaleString('th-TH'),
-      (r.expense ?? 0).toLocaleString('th-TH'),
-      (r.deduction ?? 0).toLocaleString('th-TH'),
-      (r.tax ?? 0).toLocaleString('th-TH'),
-      (r.receipts && r.receipts.length) ? r.receipts.map((x,i)=>`ไฟล์ ${i+1}`).join(' , ') : '—'
-    ]);
+    doc.setFontSize(11);
+    doc.text(`รายได้รวม: ${sumIncome.toLocaleString('th-TH')}  รายจ่ายรวม: ${sumExpense.toLocaleString('th-TH')}  ลดหย่อนรวม: ${sumDeduct.toLocaleString('th-TH')}`, 10, 34);
+    doc.text(`เงินได้สุทธิ: ${sumNet.toLocaleString('th-TH')}  ภาษีรวม (ประมาณ): ${sumTax.toLocaleString('th-TH')}`, 10, 40);
+
+    const head = [['วันที่','รายได้','วิธีรายจ่าย','รายจ่ายใช้คำนวณ','ลดหย่อน','สุทธิ','ใบเสร็จ']];
+    const body = rows.map((r) => {
+      const expUsed = computeExpenseUsed(r);
+      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
+      return [
+        r.date || '',
+        (r.income ?? 0).toLocaleString('th-TH'),
+        r.expenseMethod==='lumpsum' ? `เหมาจ่าย ${r.lumpsumPercent||''}%${r.lumpsumCap?` (เพดาน ${(r.lumpsumCap).toLocaleString('th-TH')})`:''}` : 'ตามจริง',
+        expUsed.toLocaleString('th-TH'),
+        (r.deduction ?? 0).toLocaleString('th-TH'),
+        net.toLocaleString('th-TH'),
+        (r.receipts && r.receipts.length) ? r.receipts.map((x,i)=>`ไฟล์ ${i+1}`).join(' , ') : '—'
+      ];
+    });
 
     doc.autoTable({
       head, body,
-      startY: 32,
+      startY: 46,
       styles: { fontSize: 9, cellPadding: 2 },
       headStyles: { fillColor: [243,244,246], textColor: 0 },
-      columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:26}, 2:{cellWidth:26}, 3:{cellWidth:26}, 4:{cellWidth:26}, 5:{cellWidth:'auto'} },
+      columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:26}, 2:{cellWidth:40}, 3:{cellWidth:26}, 4:{cellWidth:26}, 5:{cellWidth:26}, 6:{cellWidth:'auto'} },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();
         const str = `หน้า ${doc.internal.getCurrentPageInfo().pageNumber} / ${pageCount}`;
@@ -779,19 +926,13 @@ async function exportHistoryPDF() {
     let y = doc.lastAutoTable.finalY + 6;
     const linkLines = [];
     rows.forEach((r, idx) => {
-      (r.receipts || []).forEach((x, i) => {
-        if (x.webViewLink) {
-          linkLines.push({ text: `แถว ${idx + 1} → ไฟล์ ${i + 1}: ${x.webViewLink}`, url: x.webViewLink });
-        }
-      });
+      (r.receipts || []).forEach((x, i) => { if (x.webViewLink) { linkLines.push({ text: `แถว ${idx + 1} → ไฟล์ ${i + 1}: ${x.webViewLink}`, url: x.webViewLink }); } });
     });
 
     if (linkLines.length) {
       doc.setFontSize(11);
       doc.text('ลิงก์ใบเสร็จ (คลิกได้):', 10, y);
-      y += 5;
-      doc.setFontSize(9);
-
+      y += 5; doc.setFontSize(9);
       for (const ln of linkLines) {
         const wrapped = doc.splitTextToSize(ln.text, 190);
         doc.text(wrapped, 10, y);
@@ -799,10 +940,6 @@ async function exportHistoryPDF() {
         y += wrapped.length * 5;
         if (y > 280) { doc.addPage(); y = 14; }
       }
-    } else {
-      const y0 = doc.lastAutoTable.finalY + 6;
-      doc.setFontSize(10);
-      doc.text('ไม่มีไฟล์ใบเสร็จแนบในรายการเหล่านี้', 10, y0);
     }
 
     doc.save('taxonline_summary.pdf');
