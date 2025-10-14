@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-<!-- Firebase v8 -->
+<!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -30,6 +30,7 @@
   .splash-spinner{width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;animation:spin 1.4s linear infinite}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .nav-link{display:inline-block;margin:.25rem .4rem}
+  #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
 </style>
 </head>
 <body class="font-sans">
@@ -220,6 +221,14 @@
     </div>
   </section>
 
+  <!-- Diagnostics (toggle with #debug or ?debug=1) -->
+  <section id="diagWrap" class="hidden fade-in px-4">
+    <div class="max-w-3xl mx-auto bg-white p-4 rounded-xl shadow">
+      <h3 class="text-lg font-semibold mb-2">Diagnostics</h3>
+      <pre id="diag" class="text-xs whitespace-pre-wrap"></pre>
+    </div>
+  </section>
+
 </div>
 
 <footer class="bg-white p-4 text-center text-sm text-gray-500">
@@ -227,22 +236,36 @@
 </footer>
 
 <script>
-/* =========================
-   Firebase Init
-   ========================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
-  authDomain: "tax-online-6afdd.firebaseapp.com",
-  projectId: "tax-online-6afdd",
-  appId: "1:959276043439:web:f358ce055687efea5d185a"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+/*********************
+ * UTIL: waiters & diag
+ *********************/
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function waitForFirebase(maxMs=8000){
+  const start = Date.now();
+  while (typeof window.firebase === 'undefined'){
+    if (Date.now() - start > maxMs) throw new Error('Firebase SDK ไม่ถูกโหลดภายในเวลา '+maxMs+'ms');
+    await sleep(100);
+  }
+}
+function showDiag(lines){
+  const show = location.hash.includes('debug') || /[?&]debug=1/.test(location.search);
+  if (!show) return;
+  const wrap = document.getElementById('diagWrap');
+  const pre = document.getElementById('diag');
+  if (wrap && pre){
+    wrap.classList.remove('hidden');
+    pre.textContent = (Array.isArray(lines)?lines:[lines]).join('\n');
+  }
+}
 
-/* =========================
-   Google Drive OAuth (GIS)
-   ========================= */
+/*********************
+ * GLOBALS (init later)
+ *********************/
+let db, auth; // จะเซ็ตหลัง init เสร็จ
+
+/*********************
+ * Google Drive OAuth (GIS)
+ *********************/
 const GOOGLE_OAUTH_CLIENT_ID = "959276043439-rpc16dfdslna3ndjijicg0gehu8klp93.apps.googleusercontent.com";
 const DRIVE_SCOPES = "https://www.googleapis.com/auth/drive.file";
 let driveTokenClient = null;
@@ -387,15 +410,16 @@ async function uploadFilesToDrive(files, parentInfo){
   return results;
 }
 
-/* =========================
-   UI & Auth
-   ========================= */
+/*********************
+ * UI helpers
+ *********************/
 const sections = {
   welcome: document.getElementById('welcomeSection'),
   auth: document.getElementById('authSection'),
   profile: document.getElementById('profileSection'),
   calculator: document.getElementById('calculatorSection'),
-  history: document.getElementById('historySection')
+  history: document.getElementById('historySection'),
+  diag: document.getElementById('diagWrap')
 };
 const userGreeting = document.getElementById('userGreeting');
 const loginNav = document.getElementById('loginNav');
@@ -407,6 +431,7 @@ const calcMsg = document.getElementById('calcMsg');
 
 function showOnly(sectionKey){
   Object.keys(sections).forEach(k=>{
+    if (!sections[k]) return;
     sections[k].classList.toggle('hidden', k!==sectionKey);
   });
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -416,7 +441,7 @@ document.querySelectorAll('[data-nav]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const target = btn.getAttribute('data-nav');
     if (target==='calculator' || target==='history' || target==='profile') {
-      if (!auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); showOnly('auth'); return; }
+      if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); showOnly('auth'); return; }
     }
     if (target==='history') loadHistory();
     if (target==='profile') loadProfile();
@@ -450,77 +475,9 @@ loginTab.addEventListener('click', ()=>{ loginForm.classList.remove('hidden'); s
 signupTab.addEventListener('click', ()=>{ signupForm.classList.remove('hidden'); loginForm.classList.add('hidden'); authMessage.textContent=''; });
 loginTab.click();
 
-// Email/Pass
-loginForm.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  auth.signInWithEmailAndPassword(email, password).then(()=>showOnly('calculator')).catch(err=>authMessage.textContent=err.message);
-});
-
-// Signup
-signupForm.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const firstName = document.getElementById('signupFirstName').value.trim();
-  const lastName = document.getElementById('signupLastName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value;
-  if (!firstName || !lastName || !email || !password) { authMessage.textContent='กรุณากรอกข้อมูลให้ครบ'; return; }
-  auth.createUserWithEmailAndPassword(email, password)
-    .then(cred=>{
-      const user=cred.user;
-      return user.updateProfile({ displayName: `${firstName} ${lastName}` })
-        .then(()=> db.collection('users').doc(user.uid).set({
-          uid:user.uid, firstName, lastName, email, phone:'', address:'', createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, {merge:true}));
-    })
-    .then(()=>{ showOnly('profile'); loadProfile(); })
-    .catch(err=> authMessage.textContent=err.message );
-});
-
-// Google Sign-in (Firebase Auth)
-document.getElementById('googleSignInBtn').addEventListener('click', ()=>{
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider)
-    .then(async res=>{
-      const user = res.user;
-      const docRef = db.collection('users').doc(user.uid);
-      const snap = await docRef.get();
-      if (!snap.exists) {
-        const [firstName, ...rest] = (user.displayName||'').split(' ');
-        await docRef.set({
-          uid:user.uid,
-          firstName:firstName||'',
-          lastName:(rest||[]).join(' ')||'',
-          email:user.email||'',
-          phone:'', address:'',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, {merge:true});
-      }
-      showOnly('calculator');
-    })
-    .catch(err=> authMessage.textContent=err.message );
-});
-
-logoutBtn.addEventListener('click', ()=> auth.signOut());
-
-auth.onAuthStateChanged((user)=>{
-  if (user) {
-    userGreeting.classList.remove('hidden');
-    userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`;
-    loginNav.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
-  } else {
-    userGreeting.classList.add('hidden');
-    loginNav.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
-    showOnly('welcome');
-  }
-});
-
-/* =========================
-   Profile
-   ========================= */
+/*********************
+ * Profile (functions reuse auth/db after init)
+ *********************/
 const profileForm = document.getElementById('profileForm');
 const profileFirstName = document.getElementById('profileFirstName');
 const profileLastName = document.getElementById('profileLastName');
@@ -531,22 +488,22 @@ document.getElementById('reloadProfile').addEventListener('click', loadProfile);
 
 async function loadProfile(){
   profileMsg.textContent='';
-  const user = auth.currentUser;
-  if (!user) { profileMsg.textContent='กรุณาเข้าสู่ระบบ'; profileMsg.className='text-red-600 text-sm mt-2'; return; }
+  if (!auth || !auth.currentUser) { profileMsg.textContent='กรุณาเข้าสู่ระบบ'; profileMsg.className='text-red-600 text-sm mt-2'; return; }
   try {
-    const snap = await db.collection('users').doc(user.uid).get();
+    const snap = await db.collection('users').doc(auth.currentUser.uid).get();
     if (snap.exists) {
       const d = snap.data();
       profileFirstName.value = d.firstName || '';
       profileLastName.value  = d.lastName  || '';
-      profileEmail.value     = d.email     || user.email || '';
+      profileEmail.value     = d.email     || auth.currentUser.email || '';
       profilePhone.value     = d.phone     || '';
       profileAddress.value   = d.address   || '';
       profileMsg.textContent='โหลดข้อมูลสำเร็จ'; profileMsg.className='text-green-600 text-sm mt-2';
     } else {
-      profileFirstName.value = user.displayName ? user.displayName.split(' ')[0] : '';
-      profileLastName.value  = user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '';
-      profileEmail.value     = user.email || '';
+      const u = auth.currentUser;
+      profileFirstName.value = u.displayName ? u.displayName.split(' ')[0] : '';
+      profileLastName.value  = u.displayName ? u.displayName.split(' ').slice(1).join(' ') : '';
+      profileEmail.value     = u.email || '';
       profileMsg.textContent='ยังไม่มีข้อมูลโปรไฟล์ กรอกแล้วกดบันทึกได้เลย'; profileMsg.className='text-yellow-600 text-sm mt-2';
     }
   } catch(e){ profileMsg.textContent=e.message; profileMsg.className='text-red-600 text-sm mt-2'; }
@@ -554,27 +511,26 @@ async function loadProfile(){
 
 profileForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const user = auth.currentUser;
-  if (!user) { alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
+  if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบ'); showOnly('auth'); return; }
   try {
-    await db.collection('users').doc(user.uid).set({
-      uid:user.uid,
+    await db.collection('users').doc(auth.currentUser.uid).set({
+      uid:auth.currentUser.uid,
       firstName: profileFirstName.value.trim(),
       lastName:  profileLastName.value.trim(),
-      email:     profileEmail.value.trim() || user.email,
+      email:     profileEmail.value.trim() || auth.currentUser.email,
       phone:     profilePhone.value.trim(),
       address:   profileAddress.value.trim(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, {merge:true});
-    await user.updateProfile({ displayName: `${profileFirstName.value.trim()} ${profileLastName.value.trim()}`.trim() });
-    userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`;
+    await auth.currentUser.updateProfile({ displayName: `${profileFirstName.value.trim()} ${profileLastName.value.trim()}`.trim() });
+    userGreeting.textContent = `สวัสดี, ${auth.currentUser.displayName || auth.currentUser.email}`;
     profileMsg.textContent='บันทึกโปรไฟล์สำเร็จ'; profileMsg.className='text-green-600 text-sm mt-2';
   } catch(e){ profileMsg.textContent=e.message; profileMsg.className='text-red-600 text-sm mt-2'; }
 });
 
-/* =========================
-   File input preview (client)
-   ========================= */
+/*********************
+ * File input preview
+ *********************/
 const ALLOW_TYPES = ['image/jpeg','image/png','application/pdf'];
 const MAX_FILES = 10;
 const MAX_FILE_SIZE_MB = 8;
@@ -608,9 +564,9 @@ document.getElementById('receiptUpload').addEventListener('change', function(){
   }
 });
 
-/* =========================
-   Tax Calculator + Save + Upload (Drive)
-   ========================= */
+/*********************
+ * Tax Calculator + Save + Upload (Drive)
+ *********************/
 function calculateTax(income, expense, deduction){
   const net = income - expense - deduction;
   return net <= 150000 ? 0 : net * 0.05; // ขั้นเดียว (ตัวอย่าง)
@@ -639,12 +595,11 @@ document.getElementById('taxForm').addEventListener('submit', async (e)=>{
 
   calcMsg.textContent = '';
 
-  const user = auth.currentUser;
-  if (!user) { calcMsg.textContent='ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึก/อัปโหลด'; calcMsg.className='text-yellow-600 text-sm mt-3'; return; }
+  if (!auth || !auth.currentUser) { calcMsg.textContent='ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึก/อัปโหลด'; calcMsg.className='text-yellow-600 text-sm mt-3'; return; }
 
   try {
     // Firestore
-    const docRef = await db.collection('users').doc(user.uid).collection('calculations').add({
+    const docRef = await db.collection('users').doc(auth.currentUser.uid).collection('calculations').add({
       income: income||0, expense: expense||0, deduction: deduction||0, tax: tax||0,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       receipts: []
@@ -671,16 +626,15 @@ document.getElementById('taxForm').addEventListener('submit', async (e)=>{
   }
 });
 
-/* =========================
-   History (load & delete)
-   ========================= */
+/*********************
+ * History (load & delete)
+ *********************/
 async function loadHistory(){
   historyMsg.textContent=''; historyBody.innerHTML='';
-  const user = auth.currentUser;
-  if (!user) { historyMsg.textContent='กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
+  if (!auth || !auth.currentUser) { historyMsg.textContent='กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
 
   try {
-    const snap = await db.collection('users').doc(user.uid)
+    const snap = await db.collection('users').doc(auth.currentUser.uid)
       .collection('calculations').orderBy('createdAt','desc').limit(100).get();
 
     if (snap.empty) {
@@ -717,9 +671,8 @@ async function loadHistory(){
       btn.addEventListener('click', async ()=>{
         if (!confirm('ยืนยันการลบรายการนี้?')) return;
         try {
-          const user = auth.currentUser;
           const calcId = btn.getAttribute('data-del');
-          await db.collection('users').doc(user.uid).collection('calculations').doc(calcId).delete();
+          await db.collection('users').doc(auth.currentUser.uid).collection('calculations').doc(calcId).delete();
           loadHistory();
         } catch(e){ alert(e.message); }
       });
@@ -729,15 +682,15 @@ async function loadHistory(){
     historyMsg.textContent = e.message; historyMsg.className='text-red-600';
   }
 }
+
 document.getElementById('refreshHistory').addEventListener('click', loadHistory);
 
-/* =========================
-   Export CSV / PDF / Open Drive folder
-   ========================= */
+/*********************
+ * Export CSV / PDF / Open Drive folder
+ *********************/
 async function fetchAllCalculations() {
-  const user = auth.currentUser;
-  if (!user) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
-  const snap = await db.collection('users').doc(user.uid)
+  if (!auth || !auth.currentUser) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
+  const snap = await db.collection('users').doc(auth.currentUser.uid)
     .collection('calculations').orderBy('createdAt','desc').get();
   return snap.docs.map(d => {
     const v = d.data();
@@ -789,13 +742,13 @@ async function exportHistoryPDF() {
       alert('ไม่พบ jsPDF หรือปลั๊กอิน autoTable'); return;
     }
 
-    const user = auth.currentUser;
     const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
     doc.setFontSize(16);
     doc.text('สรุปประวัติการคำนวณภาษี (TaxOnline)', 10, 14);
     doc.setFontSize(10);
-    doc.text(`ผู้ใช้: ${user ? (user.displayName || user.email) : '-'}`, 10, 20);
+    const u = auth && auth.currentUser; 
+    doc.text(`ผู้ใช้: ${u ? (u.displayName || u.email) : '-'}`, 10, 20);
     doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
 
     const head = [['วันที่','รายได้','รายจ่าย','ลดหย่อน','ภาษี','ใบเสร็จ']];
@@ -867,583 +820,121 @@ async function openDriveFolder() {
   } catch(e) { alert(e.message || e); }
 }
 
+
 document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
 document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF);
 document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
-</script>
 
-<!-- ====================== Advanced Theme Customizer (Admin Only) ====================== -->
-<script>
-(function(){
-  // ✅ เฉพาะแอดมิน UID ต่อไปนี้ที่เห็นปุ่ม “🎨 ปรับธีม” และบันทึกได้
-  const ADMIN_UIDS = ['oSPrvjRwNaVV4KQgbzOi3Re4Agm1'];
-  const SETTINGS_DOC = { col: 'site_settings', id: 'default' };
+/*********************
+ * BOOT: Initialize Firebase AFTER SDK loads
+ *********************/
+(async function boot(){
+  const diag = [];
+  try{
+    // 1) รอ SDK
+    await waitForFirebase(10000);
+    diag.push('[OK] Firebase SDK loaded');
 
-  const $q = s => document.querySelector(s);
-  function createEl(tag, attrs={}, children=[]) {
-    const el = document.createElement(tag);
-    Object.entries(attrs).forEach(([k,v])=>{
-      if (k==='class') el.className = v;
-      else if (k==='style') el.style.cssText = v;
-      else el.setAttribute(k,v);
+    // 2) Init Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
+      authDomain: "tax-online-6afdd.firebaseapp.com",
+      projectId: "tax-online-6afdd",
+      appId: "1:959276043439:web:f358ce055687efea5d185a"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    diag.push('[OK] Firebase initialized, Firestore & Auth ready');
+
+    // 3) Wire auth flows NOW (ต้องหลังได้ auth)
+    const loginForm = document.getElementById('loginForm');
+    const authMessage = document.getElementById('authMessage');
+    loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(()=>showOnly('calculator'))
+        .catch(err=>authMessage.textContent=err.message);
     });
-    (Array.isArray(children)?children:[children]).forEach(c=>{
-      if (c==null) return;
-      if (typeof c==='string') el.appendChild(document.createTextNode(c));
-      else el.appendChild(c);
+
+    const signupForm = document.getElementById('signupForm');
+    signupForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const firstName = document.getElementById('signupFirstName').value.trim();
+      const lastName = document.getElementById('signupLastName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      if (!firstName || !lastName || !email || !password) { authMessage.textContent='กรุณากรอกข้อมูลให้ครบ'; return; }
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(cred=>{
+          const user=cred.user;
+          return user.updateProfile({ displayName: `${firstName} ${lastName}` })
+            .then(()=> db.collection('users').doc(user.uid).set({
+              uid:user.uid, firstName, lastName, email, phone:'', address:'', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, {merge:true}));
+        })
+        .then(()=>{ showOnly('profile'); loadProfile(); })
+        .catch(err=> authMessage.textContent=err.message );
     });
-    return el;
-  }
 
-  // ---------- STATE ----------
-  const defaultButtonColors = {
-    welcomeCalc:     { bg:'#ef4444', text:'#ffffff' },
-    welcomeLogin:    { bg:'#2563eb', text:'#ffffff' },
-    driveConnect:    { bg:'#16a34a', text:'#ffffff' },
-    taxSubmit:       { bg:'#2563eb', text:'#ffffff' },
-    historyRefresh:  { bg:'#e5e7eb', text:'#111827' },
-    historyCsv:      { bg:'#dbeafe', text:'#1d4ed8' },
-    historyPdf:      { bg:'#ede9fe', text:'#6d28d9' },
-    historyOpenFolder:{ bg:'#dcfce7', text:'#166534' },
-    logoutBtn:       { bg:'#ef4444', text:'#ffffff' }
-  };
-
-  const state = {
-    loaded:false,
-    values:{
-      brandTitle:'',
-      welcomeTitle:'',
-      welcomeSubtext:'',
-      primaryColor:'#2563eb',
-      accentColor:'#f59e0b',
-      buttonRadius:12,
-      darkDefault:false,
-      fontUrl:'',
-      fontCssFamily:'system-ui',
-      hideWelcome:false,
-      hideProfile:false,
-      hideCalculator:false,
-      hideHistory:false,
-      logo:null,
-      buttonColors: JSON.parse(JSON.stringify(defaultButtonColors))
-    }
-  };
-
-  // ---------- Drive helpers ----------
-  async function getOrCreateDriveAssetsFolder() {
-    if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found (กด "เชื่อมต่อ Google Drive" มุมขวาบนก่อน)');
-    await ensureDriveToken();
-    const q = "name='TaxOnline Assets' and mimeType='application/vnd.google-apps.folder' and trashed=false";
-    const search = await fetch(
-      'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,webViewLink)',
-      { headers: { 'Authorization': 'Bearer ' + (window.driveAccessToken || '') } }
-    );
-    if (search.ok) {
-      const j = await search.json();
-      if (j.files && j.files.length) return { id: j.files[0].id, webViewLink: j.files[0].webViewLink };
-    }
-    const res = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
-      method:'POST',
-      headers:{ 'Authorization':'Bearer '+(window.driveAccessToken||''), 'Content-Type':'application/json' },
-      body: JSON.stringify({ name:'TaxOnline Assets', mimeType:'application/vnd.google-apps.folder' })
+    document.getElementById('googleSignInBtn').addEventListener('click', ()=>{
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(async res=>{
+          const user = res.user;
+          const docRef = db.collection('users').doc(user.uid);
+          const snap = await docRef.get();
+          if (!snap.exists) {
+            const [firstName, ...rest] = (user.displayName||'').split(' ');
+            await docRef.set({
+              uid:user.uid,
+              firstName:firstName||'',
+              lastName:(rest||[]).join(' ')||'',
+              email:user.email||'',
+              phone:'', address:'',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, {merge:true});
+          }
+          showOnly('calculator');
+        })
+        .catch(err=> authMessage.textContent=err.message );
     });
-    if (!res.ok) throw new Error('สร้างโฟลเดอร์ Assets ไม่สำเร็จ');
-    const d = await res.json();
-    return { id: d.id, webViewLink: d.webViewLink };
-  }
 
-  async function uploadLogoToDrive(file) {
-    if (!file) throw new Error('ยังไม่ได้เลือกไฟล์โลโก้');
-    if (typeof ensureDriveToken !== 'function') throw new Error('ensureDriveToken() not found');
-    await ensureDriveToken();
-    const parent = await getOrCreateDriveAssetsFolder();
-    const meta = { name:file.name, mimeType:file.type||'application/octet-stream', parents:[parent.id] };
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(meta)], { type:'application/json' }));
-    form.append('file', file);
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-      method:'POST', headers:{ 'Authorization':'Bearer '+(window.driveAccessToken||'') }, body: form
-    });
-    if (!res.ok) throw new Error('อัปโหลดโลโก้ล้มเหลว');
-    const j = await res.json();
-    const embedUrl = `https://drive.google.com/uc?export=view&id=${j.id}`;
-    return { driveFileId: j.id, webViewLink: j.webViewLink, embedUrl, name: file.name, mimeType: file.type||null };
-  }
+    logoutBtn.addEventListener('click', ()=> auth.signOut());
 
-  // ---------- Apply theme ----------
-  function ensureLogoSlot() {
-    let slot = document.getElementById('logoSlot');
-    if (slot) return slot;
-    const hdr = document.querySelector('header .max-w-6xl .flex.items-center');
-    if (!hdr) return null;
-    slot = createEl('div', { id:'logoSlot', class:'flex items-center gap-2' });
-    const img = createEl('img', { id:'siteLogo', alt:'Logo', class:'h-8 w-8 rounded-lg hidden' });
-    slot.appendChild(img);
-    const h1 = hdr.querySelector('h1');
-    if (h1) { hdr.insertBefore(slot, h1); slot.appendChild(h1); } else { hdr.prepend(slot); }
-    return slot;
-  }
-
-  function injectFont(url) {
-    if (!url) return;
-    let link = document.getElementById('customFontLink');
-    if (!link) { link = document.createElement('link'); link.id='customFontLink'; link.rel='stylesheet'; document.head.appendChild(link); }
-    link.href = url;
-  }
-
-  function styleButton(sel, colors, radiusPx) {
-    const el = $q(sel);
-    if (!el) return;
-    if (colors?.bg)   el.style.backgroundColor = colors.bg;
-    if (colors?.text) el.style.color = colors.text;
-    if (radiusPx!=null) el.style.borderRadius = radiusPx + 'px';
-    el.classList.remove('bg-gray-100','bg-blue-50','bg-purple-50','bg-green-50','text-blue-700','text-purple-700','text-green-700');
-  }
-
-  function applySettings(v) {
-    if (v.fontUrl) injectFont(v.fontUrl);
-    document.documentElement.style.setProperty('--tx-font', v.fontCssFamily || 'system-ui');
-    document.body.style.fontFamily = 'var(--tx-font)';
-
-    document.documentElement.style.setProperty('--tx-primary', v.primaryColor || '#2563eb');
-    document.documentElement.style.setProperty('--tx-accent',  v.accentColor  || '#f59e0b');
-
-    if (v.brandTitle)   { const h=$q('header h1'); if (h) h.textContent = v.brandTitle; }
-    if (v.welcomeTitle) { const h=$q('#welcomeSection h2'); if (h) h.textContent = v.welcomeTitle; }
-    if (v.welcomeSubtext){ const p=$q('#welcomeSection p'); if (p) p.textContent = v.welcomeSubtext; }
-
-    const slot = ensureLogoSlot();
-    const img = slot ? slot.querySelector('#siteLogo') : null;
-    if (img) {
-      if (v.logo && (v.logo.embedUrl || v.logo.webViewLink)) {
-        img.src = v.logo.embedUrl || v.logo.webViewLink;
-        img.classList.remove('hidden');
+    auth.onAuthStateChanged((user)=>{
+      if (user) {
+        userGreeting.classList.remove('hidden');
+        userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`;
+        loginNav.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
       } else {
-        img.classList.add('hidden'); img.removeAttribute('src');
-      }
-    }
-
-    if (v.darkDefault) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-
-    [
-      {key:'hideWelcome',    sel:'#welcomeSection'},
-      {key:'hideProfile',    sel:'#profileSection'},
-      {key:'hideCalculator', sel:'#calculatorSection'},
-      {key:'hideHistory',    sel:'#historySection'}
-    ].forEach(m=>{
-      const el = $q(m.sel); if (!el) return;
-      el.style.display = v[m.key] ? 'none' : '';
-    });
-
-    const bc = Object.assign({}, defaultButtonColors, v.buttonColors||{});
-    const r  = v.buttonRadius ?? 12;
-    styleButton('#welcomeSection [data-nav="calculator"]', bc.welcomeCalc, r);
-    styleButton('#welcomeLoginBtn',                        bc.welcomeLogin, r);
-    styleButton('#driveConnectBtn',                        bc.driveConnect, r);
-    styleButton('#taxForm button[type="submit"]',          bc.taxSubmit, r);
-    styleButton('#refreshHistory',                         bc.historyRefresh, r);
-    styleButton('#downloadCsvBtn',                         bc.historyCsv, r);
-    styleButton('#downloadPdfBtn',                         bc.historyPdf, r);
-    styleButton('#openDriveFolderBtn',                     bc.historyOpenFolder, r);
-    styleButton('#logoutBtn',                              bc.logoutBtn, r);
-  }
-
-  // ---------- Firestore I/O ----------
-  async function loadSettings() {
-    try {
-      const ref = firebase.firestore().collection(SETTINGS_DOC.col).doc(SETTINGS_DOC.id);
-      const snap = await ref.get();
-      if (snap.exists) {
-        const data = snap.data() || {};
-        state.values = Object.assign({}, state.values, data);
-        state.values.buttonColors = Object.assign({}, defaultButtonColors, data.buttonColors||{});
-      } else {
-        state.values.brandTitle     = ($q('header h1')?.textContent || 'TaxOnline').trim();
-        state.values.welcomeTitle   = ($q('#welcomeSection h2')?.textContent || '').trim();
-        state.values.welcomeSubtext = ($q('#welcomeSection p')?.textContent || '').trim();
-      }
-      applySettings(state.values);
-      state.loaded = true;
-    } catch (e) { console.error('load settings failed:', e); }
-  }
-
-  async function saveSettings(values) {
-    const user = firebase.auth().currentUser;
-    if (!user) throw new Error('กรุณาเข้าสู่ระบบก่อน');
-    if (ADMIN_UIDS && !ADMIN_UIDS.includes(user.uid)) throw new Error('คุณไม่มีสิทธิ์ปรับแต่ง');
-
-    const payload = Object.assign({}, values, {
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedBy: user.uid
-    });
-    await firebase.firestore().collection(SETTINGS_DOC.col).doc(SETTINGS_DOC.id).set(payload, { merge:true });
-    state.values = Object.assign(state.values, values);
-    applySettings(state.values);
-  }
-
-  // ---------- UI (Admin Only) ----------
-  function removeAdminUI(){
-    document.getElementById('advCustomizeFab')?.remove();
-    document.getElementById('advCustomizeOverlay')?.remove();
-  }
-
-  function mountAdminUI(){
-    if (document.getElementById('advCustomizeFab')) return;
-
-    const fab = createEl('button', {
-      id:'advCustomizeFab', type:'button',
-      class:'fixed z-50 right-4 bottom-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full shadow-lg'
-    }, '🎨 ปรับธีม');
-    document.body.appendChild(fab);
-
-    // ✅ overlay ไม่ block สกอ — ให้สกอได้ปกติ
-    const overlay = createEl('div', {
-      id:'advCustomizeOverlay',
-      class:'fixed inset-0 z-50 hidden',
-      style:'background:rgba(0,0,0,.45)'
-    });
-
-    // panel สกอได้เอง
-    const panel = createEl('div', {
-      class:'absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-2xl p-5 overflow-auto'
-    });
-    overlay.appendChild(panel);
-    document.body.appendChild(overlay);
-
-    // ป้องกันคลิ้กใน panel แล้ว overlay ปิด
-    panel.addEventListener('click', e=> e.stopPropagation(), true);
-    // คลิ้กฉากดำเพื่อปิด
-    overlay.addEventListener('click', ()=>{
-      overlay.classList.add('hidden');
-      document.body.style.overflow='';
-    });
-
-    panel.appendChild(createEl('h3', { class:'text-xl font-semibold mb-1 text-indigo-600' }, 'ปรับธีมขั้นสูง'));
-    panel.appendChild(createEl('p',  { class:'text-xs text-gray-500 mb-4' }, 'แก้ข้อความ สี ฟอนต์ โลโก้ ซ่อน/แสดงส่วน และ “สีปุ่มรายปุ่ม” — บันทึกแล้วใช้ทันที'));
-
-    const form = createEl('form', { class:'space-y-4', novalidate:true });
-
-    // --- กลุ่ม: ข้อความ ---
-    const fieldText = `
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ข้อความ</legend>
-        <label class="block text-sm mb-1">ชื่อเว็บ/โลโก้ (Header)</label>
-        <input type="text" id="adv_brandTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น TaxOnline">
-        <label class="block text-sm mb-1">หัวเรื่องหน้าแรก</label>
-        <input type="text" id="adv_welcomeTitle" class="w-full p-2 border rounded mb-2" placeholder="เช่น คำนวณภาษีออนไลน์ ง่ายภายใน 1 นาที!">
-        <label class="block text-sm mb-1">คำโปรยหน้าแรก</label>
-        <textarea id="adv_welcomeSubtext" rows="3" class="w-full p-2 border rounded" placeholder="ข้อความอธิบายเว็บไซต์"></textarea>
-      </fieldset>
-    `;
-
-    // --- กลุ่ม: ธีม/ฟอนต์ ---
-    const fieldTheme = `
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ธีมสี (ทั่วไป) & ปุ่มโค้ง</legend>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-sm mb-1">สีหลัก (Primary)</label>
-            <input type="color" id="adv_primaryColor" class="w-full h-10 p-0 border rounded" value="#2563eb">
-          </div>
-          <div>
-            <label class="block text-sm mb-1">สีรอง (Accent)</label>
-            <input type="color" id="adv_accentColor" class="w-full h-10 p-0 border rounded" value="#f59e0b">
-          </div>
-        </div>
-        <label class="block text-sm mt-3">มุมปุ่ม (px)</label>
-        <input type="range" id="adv_buttonRadius" min="0" max="24" step="1" value="12" class="w-full">
-        <div class="text-xs text-gray-500 mt-1">ค่าปัจจุบัน: <span id="radiusVal">12</span>px</div>
-        <label class="inline-flex items-center gap-2 mt-3 cursor-pointer">
-          <input type="checkbox" id="adv_darkDefault" class="form-checkbox"> เริ่มด้วยโหมดมืด (Dark by default)
-        </label>
-      </fieldset>
-
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ฟอนต์</legend>
-        <label class="block text-sm mb-1">เลือกฟอนต์อย่างเร็ว</label>
-        <select id="adv_fontQuick" class="w-full p-2 border rounded mb-2">
-          <option value="">-- เลือก --</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap","family":"Sarabun, sans-serif"}'>Sarabun (ไทย)</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Prompt:wght@400;600&display=swap","family":"Prompt, sans-serif"}'>Prompt (ไทย)</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&display=swap","family":"Noto Sans Thai, sans-serif"}'>Noto Sans Thai</option>
-          <option value='{"url":"https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap","family":"Inter, system-ui, sans-serif"}'>Inter</option>
-        </select>
-        <div class="grid grid-cols-1 gap-2">
-          <div>
-            <label class="block text-sm mb-1">Google Fonts / CSS URL</label>
-            <input type="url" id="adv_fontUrl" class="w-full p-2 border rounded" placeholder="https://fonts.googleapis.com/...">
-          </div>
-          <div>
-            <label class="block text-sm mb-1">font-family (CSS)</label>
-            <input type="text" id="adv_fontCssFamily" class="w-full p-2 border rounded" placeholder="เช่น 'Sarabun, sans-serif'">
-          </div>
-        </div>
-        <div class="text-xs text-gray-500 mt-2">* เลือกจากรายการด้านบน หรือใส่ URL/ชื่อฟอนต์เองก็ได้</div>
-        <button type="button" id="adv_tryFont" class="mt-2 px-3 py-1 bg-gray-100 rounded hover:bg-gray-200">ลองใช้ฟอนต์ชั่วคราว</button>
-      </fieldset>
-    `;
-
-    // --- กลุ่ม: โลโก้ ---
-    const fieldLogo = `
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">โลโก้</legend>
-        <div class="flex items-center gap-3">
-          <input type="file" id="adv_logoFile" accept="image/*" class="text-sm">
-          <button type="button" id="adv_uploadLogo" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">อัปโหลดไป Drive</button>
-        </div>
-        <div id="adv_logoPreview" class="mt-2 text-sm text-gray-500"></div>
-        <div class="text-xs text-gray-500 mt-1">* ไฟล์จะถูกเก็บในโฟลเดอร์ "TaxOnline Assets" บน Google Drive ของคุณ</div>
-      </fieldset>
-    `;
-
-    // --- กลุ่ม: ซ่อน/แสดง ---
-    const fieldVisibility = `
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">ซ่อน/แสดง ส่วนต่าง ๆ</legend>
-        <div class="grid grid-cols-2 gap-2 text-sm">
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideWelcome"> ซ่อนหน้าแรก</label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideProfile"> ซ่อนโปรไฟล์</label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideCalculator"> ซ่อนคำนวณภาษี</label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adv_hideHistory"> ซ่อนประวัติ</label>
-        </div>
-      </fieldset>
-    `;
-
-    // --- กลุ่ม: สีปุ่มรายปุ่ม ---
-    function buttonColorRow(key, label){
-      return `
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 items-center">
-          <div class="sm:col-span-2 text-sm">${label}</div>
-          <div>
-            <label class="block text-xs text-gray-500">พื้นหลัง</label>
-            <input type="color" id="adv_btn_${key}_bg" class="w-full h-10 p-0 border rounded">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500">ตัวอักษร</label>
-            <input type="color" id="adv_btn_${key}_text" class="w-full h-10 p-0 border rounded" value="#ffffff">
-          </div>
-          <div>
-            <button type="button" id="adv_btn_${key}_try" class="w-full px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 text-xs">ลอง</button>
-          </div>
-        </div>
-      `;
-    }
-    const fieldButtons = `
-      <fieldset class="border rounded p-3">
-        <legend class="px-2 text-sm font-semibold">สีปุ่ม (รายปุ่ม)</legend>
-        <div class="space-y-3">
-          ${buttonColorRow('welcomeCalc','หน้าแรก: “เริ่มคำนวณเลย”')}
-          ${buttonColorRow('welcomeLogin','หน้าแรก: “เข้าสู่ระบบ / สมัครสมาชิก”')}
-          ${buttonColorRow('driveConnect','ปุ่ม “เชื่อมต่อ Google Drive” (ขวาบน)')}
-          ${buttonColorRow('taxSubmit','ปุ่ม “คำนวณภาษี” ในฟอร์ม')}
-          ${buttonColorRow('historyRefresh','ประวัติ: ปุ่ม “รีเฟรช”')}
-          ${buttonColorRow('historyCsv','ประวัติ: ปุ่ม “ดาวน์โหลด CSV”')}
-          ${buttonColorRow('historyPdf','ประวัติ: ปุ่ม “ดาวน์โหลดสรุป PDF”')}
-          ${buttonColorRow('historyOpenFolder','ประวัติ: ปุ่ม “เปิดโฟลเดอร์ Drive”')}
-          ${buttonColorRow('logoutBtn','ปุ่ม “ออกจากระบบ”')}
-        </div>
-        <div class="text-xs text-gray-500 mt-2">* ปุ่ม “ลอง” จะทดสอบสีเฉพาะปุ่มนั้นบนหน้า (ยังไม่บันทึก)</div>
-      </fieldset>
-    `;
-
-    form.innerHTML = `
-      ${fieldText}
-      ${fieldTheme}
-      ${fieldLogo}
-      ${fieldVisibility}
-      ${fieldButtons}
-      <div class="flex items-center justify-between pt-2">
-        <button type="button" id="adv_preview" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ดูตัวอย่าง</button>
-        <div class="space-x-2">
-          <button type="button" id="adv_close" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">ปิด</button>
-          <button type="submit" id="adv_save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded">บันทึก</button>
-        </div>
-      </div>
-      <p id="adv_msg" class="text-xs text-gray-500 mt-1"></p>
-    `;
-    panel.appendChild(form);
-
-    // กัน submit reload หน้า
-    form.addEventListener('submit', e => { e.preventDefault(); e.stopPropagation(); });
-
-    function fillForm(v){
-      $q('#adv_brandTitle').value     = v.brandTitle   || ($q('header h1')?.textContent || 'TaxOnline');
-      $q('#adv_welcomeTitle').value  = v.welcomeTitle || ($q('#welcomeSection h2')?.textContent || '');
-      $q('#adv_welcomeSubtext').value= v.welcomeSubtext || ($q('#welcomeSection p')?.textContent || '');
-      $q('#adv_primaryColor').value  = v.primaryColor || '#2563eb';
-      $q('#adv_accentColor').value   = v.accentColor  || '#f59e0b';
-      $q('#adv_buttonRadius').value  = v.buttonRadius ?? 12;
-      $q('#radiusVal').textContent   = v.buttonRadius ?? 12;
-      $q('#adv_darkDefault').checked = !!v.darkDefault;
-      $q('#adv_fontUrl').value       = v.fontUrl || '';
-      $q('#adv_fontCssFamily').value = v.fontCssFamily || 'system-ui';
-      $q('#adv_hideWelcome').checked    = !!v.hideWelcome;
-      $q('#adv_hideProfile').checked    = !!v.hideProfile;
-      $q('#adv_hideCalculator').checked = !!v.hideCalculator;
-      $q('#adv_hideHistory').checked    = !!v.hideHistory;
-
-      const prev = $q('#adv_logoPreview');
-      if (v.logo && v.logo.webViewLink) {
-        prev.innerHTML = `<a href="${v.logo.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">โลโก้ปัจจุบัน: ${v.logo.name||'ดูไฟล์'}</a>`;
-      } else prev.textContent = 'ยังไม่มีโลโก้';
-
-      const bc = Object.assign({}, defaultButtonColors, v.buttonColors||{});
-      Object.entries(bc).forEach(([key, val])=>{
-        const bgEl   = $q(`#adv_btn_${key}_bg`);
-        const textEl = $q(`#adv_btn_${key}_text`);
-        if (bgEl)   bgEl.value   = val.bg;
-        if (textEl) textEl.value = val.text;
-      });
-    }
-
-    function collectButtonColors(){
-      const keys = Object.keys(defaultButtonColors);
-      const out = {};
-      keys.forEach(key=>{
-        const bgEl   = $q(`#adv_btn_${key}_bg`);
-        const textEl = $q(`#adv_btn_${key}_text`);
-        out[key] = {
-          bg:   (bgEl   && bgEl.value)   || defaultButtonColors[key].bg,
-          text: (textEl && textEl.value) || defaultButtonColors[key].text
-        };
-      });
-      return out;
-    }
-
-    function collectValues(){
-      return {
-        brandTitle: $q('#adv_brandTitle').value.trim(),
-        welcomeTitle: $q('#adv_welcomeTitle').value.trim(),
-        welcomeSubtext: $q('#adv_welcomeSubtext').value.trim(),
-        primaryColor: $q('#adv_primaryColor').value,
-        accentColor:  $q('#adv_accentColor').value,
-        buttonRadius: parseInt($q('#adv_buttonRadius').value||'12',10),
-        darkDefault:  $q('#adv_darkDefault').checked,
-        fontUrl:      $q('#adv_fontUrl').value.trim(),
-        fontCssFamily:$q('#adv_fontCssFamily').value.trim()||'system-ui',
-        hideWelcome:    $q('#adv_hideWelcome').checked,
-        hideProfile:    $q('#adv_hideProfile').checked,
-        hideCalculator: $q('#adv_hideCalculator').checked,
-        hideHistory:    $q('#adv_hideHistory').checked,
-        logo: state.values.logo || null,
-        buttonColors: collectButtonColors()
-      };
-    }
-
-    // events: ฟอนต์
-    $q('#adv_tryFont').addEventListener('click', ()=>{
-      const url = $q('#adv_fontUrl').value.trim();
-      const fam = $q('#adv_fontCssFamily').value.trim() || 'system-ui';
-      applySettings(Object.assign({}, state.values, { fontUrl:url, fontCssFamily:fam }));
-      $q('#adv_msg').textContent = 'ลองฟอนต์แล้ว (ยังไม่บันทึก)';
-    });
-
-    $q('#adv_fontQuick').addEventListener('change', e=>{
-      const val = e.target.value; if (!val) return;
-      try {
-        const o = JSON.parse(val);
-        $q('#adv_fontUrl').value = o.url || '';
-        $q('#adv_fontCssFamily').value = o.family || '';
-      } catch {}
-    });
-
-    // events: อัปโหลดโลโก้
-    $q('#adv_uploadLogo').addEventListener('click', async ()=>{
-      const f = $q('#adv_logoFile').files[0];
-      if (!f) { alert('เลือกไฟล์โลโก้ก่อน'); return; }
-      const msg = $q('#adv_msg');
-      try {
-        msg.textContent = 'กำลังอัปโหลดโลโก้...';
-        const res = await uploadLogoToDrive(f);
-        state.values.logo = res;
-        applySettings(state.values);
-        const prev = $q('#adv_logoPreview');
-        prev.innerHTML = `<a href="${res.webViewLink}" target="_blank" rel="noopener" class="text-blue-600 underline">อัปโหลดแล้ว: ${res.name}</a>`;
-        msg.textContent = 'อัปโหลดสำเร็จ (อย่าลืมกด "บันทึก")';
-      } catch(e){ msg.textContent = 'อัปโหลดล้มเหลว: ' + (e.message||e); }
-    });
-
-    // events: ปุ่ม “ลอง” เฉพาะปุ่มนั้น ๆ
-    function wireTryBtn(key, sel){
-      const btn = $q(`#adv_btn_${key}_try`);
-      if (!btn) return;
-      btn.addEventListener('click', ()=>{
-        const bg   = $q(`#adv_btn_${key}_bg`)?.value || defaultButtonColors[key].bg;
-        const text = $q(`#adv_btn_${key}_text`)?.value || defaultButtonColors[key].text;
-        const temp = Object.assign({}, state.values);
-        temp.buttonColors = Object.assign({}, state.values.buttonColors, { [key]: {bg, text} });
-        applySettings(temp);
-        $q('#adv_msg').textContent = `ลองสีปุ่ม: ${key} แล้ว (ยังไม่บันทึก)`;
-      });
-    }
-    wireTryBtn('welcomeCalc',     '#welcomeSection [data-nav="calculator"]');
-    wireTryBtn('welcomeLogin',    '#welcomeLoginBtn');
-    wireTryBtn('driveConnect',    '#driveConnectBtn');
-    wireTryBtn('taxSubmit',       '#taxForm button[type="submit"]');
-    wireTryBtn('historyRefresh',  '#refreshHistory');
-    wireTryBtn('historyCsv',      '#downloadCsvBtn');
-    wireTryBtn('historyPdf',      '#downloadPdfBtn');
-    wireTryBtn('historyOpenFolder','#openDriveFolderBtn');
-    wireTryBtn('logoutBtn',       '#logoutBtn');
-
-    // ✅ ปุ่ม "ดูตัวอย่าง"
-    $q('#adv_preview').addEventListener('click', ()=>{
-      applySettings(Object.assign({}, state.values, collectValues()));
-      $q('#adv_msg').textContent = 'แสดงตัวอย่างแล้ว (ยังไม่บันทึก)';
-    });
-
-    // ✅ ปุ่ม "ปิด"
-    $q('#adv_close').addEventListener('click', ()=>{
-      overlay.classList.add('hidden');
-      document.body.style.overflow='';
-    });
-
-    // ✅ ปุ่ม "บันทึก"
-    $q('#adv_save').addEventListener('click', async (e)=>{
-      e.preventDefault(); e.stopPropagation();
-      const msg = $q('#adv_msg');
-      try {
-        await saveSettings(collectValues());
-        msg.textContent = 'บันทึกสำเร็จ ✔'; msg.className='text-xs text-green-600';
-        overlay.classList.add('hidden'); document.body.style.overflow='';
-      } catch(err){ msg.textContent = (err.message||'บันทึกล้มเหลว'); msg.className='text-xs text-red-600'; }
-    });
-
-    // เปิด/ปิดแผง
-    fab.addEventListener('click', ()=>{
-      const user = firebase.auth().currentUser;
-      if (!user) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
-      if (ADMIN_UIDS && !ADMIN_UIDS.includes(user.uid)) { alert('คุณไม่มีสิทธิ์ปรับแต่ง'); return; }
-      fillForm(state.values);
-      overlay.classList.remove('hidden');
-      document.body.style.overflow='hidden';
-      panel.focus();
-    });
-
-    // ปิดด้วย ESC
-    window.addEventListener('keydown', (e)=>{
-      if (e.key === 'Escape' && !overlay.classList.contains('hidden')) {
-        overlay.classList.add('hidden');
-        document.body.style.overflow='';
+        userGreeting.classList.add('hidden');
+        loginNav.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        showOnly('welcome');
       }
     });
+
+    // 4) Diagnostics
+    const checks = [
+      ['window.firebase', !!window.firebase],
+      ['firebase.apps.length', firebase.apps && firebase.apps.length>0],
+      ['firebase.auth', !!firebase.auth],
+      ['firebase.firestore', !!firebase.firestore],
+      ['Chart', !!window.Chart],
+      ['jsPDF', !!(window.jspdf && window.jspdf.jsPDF)],
+      ['GIS (google.accounts)', !!(window.google && google.accounts)]
+    ];
+    checks.forEach(([k,v])=> diag.push(`${v?'[OK]':'[X]'} ${k}`));
+    showDiag(diag);
+  }catch(err){
+    console.error(err);
+    showDiag(['[X] boot failed', String(err)]);
+    alert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ: '+ err.message);
   }
-
-  // ---------- BOOT ----------
-  const boot = ()=>{ loadSettings(); };
-  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-
-  // โหลดธีมใหม่เมื่อผู้ใช้เปลี่ยน + แสดง/ซ่อน UI ตามสิทธิ์
-  firebase.auth().onAuthStateChanged((user)=>{
-    if (state.loaded) loadSettings();
-    if (user && ADMIN_UIDS.includes(user.uid)) {
-      mountAdminUI();
-    } else {
-      removeAdminUI();
-    }
-  });
 })();
 </script>
 
