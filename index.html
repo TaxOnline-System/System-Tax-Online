@@ -845,14 +845,14 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* --- ฟอนต์ไทยสำหรับ jsPDF (เวอร์ชัน Product-Ready) --- */
+/* --- ฟอนต์ไทยสำหรับ jsPDF (เวอร์ชัน Product-Ready, แก้ปัญหาภาษาแปลก) --- */
 async function ensureThaiFont() {
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) throw new Error('jsPDF ยังไม่พร้อม');
 
   const FONT_NAME = 'NotoSansThai';
   const VFS_FILE  = 'NotoSansThai-Regular.ttf';
-  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v1'; // versioned cache key
+  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v2'; // *** เปลี่ยนเวอร์ชันคีย์เพื่อบังคับรีโหลด ***
 
   // ฟอนต์ถูก register แล้วหรือยัง
   try { new jsPDF().setFont(FONT_NAME); return; } catch (_) {}
@@ -865,18 +865,19 @@ async function ensureThaiFont() {
     try { new jsPDF().setFont(FONT_NAME); return; } catch(_) {}
   }
 
-  // โหลดฟอนต์ (มี CORS)
+  // โหลดฟอนต์ (ใช้ arrayBuffer -> base64 เพื่อความเสถียร)
   const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf';
   const res = await fetch(FONT_URL, { mode: 'cors' });
   if (!res.ok) throw new Error('โหลดฟอนต์ไทยไม่สำเร็จ: HTTP ' + res.status);
 
-  const blob = await res.blob();
-  const base64 = await new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(String(fr.result).split(',')[1]);
-    fr.onerror = reject;
-    fr.readAsDataURL(blob);
-  });
+  const buf = await res.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000; // แปลงเป็นชิ้น ๆ ให้ปลอดภัยกับสตริงยาว
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  const base64 = btoa(binary);
 
   jsPDF.API.addFileToVFS(VFS_FILE, base64);
   jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
@@ -914,13 +915,14 @@ async function exportHistoryPDF() {
 
     // สร้างเอกสาร
     const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    doc.setFont(FONT, 'normal');
+    doc.setFont(FONT, 'normal'); // *** ย้ำฟอนต์ทันทีที่สร้างเอกสาร ***
 
     // Header
     doc.setFontSize(16);
     doc.text('สรุปประวัติและภาษีรวม (TaxOnline)', 10, 14);
     doc.setFontSize(10);
     const u = auth && auth.currentUser;
+    doc.setFont(FONT, 'normal');
     doc.text(`ผู้ใช้: ${u ? (u.displayName || u.email) : '-'}`, 10, 20);
     doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
 
@@ -929,6 +931,7 @@ async function exportHistoryPDF() {
       ? `วิธีรายจ่าย: เหมาจ่าย ${cfg.percent||0}%${cfg.cap?` (เพดาน ${Number(cfg.cap).toLocaleString('th-TH')} บ.)`:''}`
       : 'วิธีรายจ่าย: ตามจริง';
     doc.setFontSize(11);
+    doc.setFont(FONT, 'normal');
     doc.text(cfgText, 10, 32);
     doc.text(`รายได้รวม: ${sumIncome.toLocaleString('th-TH')}  รายจ่ายรวม: ${sumExpense.toLocaleString('th-TH')}  ลดหย่อนรวม: ${sumDeduct.toLocaleString('th-TH')}`, 10, 38);
     doc.text(`เงินได้สุทธิ: ${sumNet.toLocaleString('th-TH')}  ภาษีรวม (ประมาณ): ${sumTax.toLocaleString('th-TH')}`, 10, 44);
@@ -953,6 +956,7 @@ async function exportHistoryPDF() {
       startY: 50,
       styles: { font: FONT, fontSize: 9, cellPadding: 2 },
       headStyles: { font: FONT, fontStyle: 'normal', fillColor: [243,244,246], textColor: 0 },
+      bodyStyles: { font: FONT }, // *** สำคัญ: บังคับฟอนต์ในบอดีตาราง ***
       columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:26}, 2:{cellWidth:32}, 3:{cellWidth:26}, 4:{cellWidth:26}, 5:{cellWidth:'auto'} },
       didDrawPage: () => {
         const pageCount = doc.internal.getNumberOfPages();
@@ -978,6 +982,7 @@ async function exportHistoryPDF() {
       doc.text('ลิงก์ใบเสร็จ (คลิกได้):', 10, y);
       y += 6; doc.setFontSize(10);
       for (const item of links) {
+        doc.setFont(FONT, 'normal');
         doc.textWithLink(item.label, 10, y, { url: item.url });
         y += 6;
         if (y > 280) { doc.addPage(); doc.setFont(FONT,'normal'); y = 14; }
