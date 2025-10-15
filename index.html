@@ -229,6 +229,39 @@
         </div>
       </div>
 
+      <!-- นำเข้าจากข้อความ -->
+      <div class="mb-6 p-4 rounded-xl bg-blue-50 border border-blue-200">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="font-semibold text-blue-700">นำเข้าประวัติจากข้อความ (วางข้อความสรุปที่คัดลอกมา)</div>
+            <p class="text-xs text-blue-700/80">รูปแบบที่รองรับ: <code>DD/MM/YYYY HH:MM:SS รายได้ รายจ่ายใช้คำนวณ ลดหย่อน สุทธิ ...</code> (ตัวเลขมีคอมมาหรือมีอักขระแปลก ๆ ได้)</p>
+          </div>
+        </div>
+        <textarea id="importBox" rows="5" class="mt-3 w-full p-3 rounded-lg border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="วางข้อความที่นี่"></textarea>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <button id="parseImportBtn" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">แปลง/พรีวิว</button>
+          <button id="saveImportBtn" class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm" disabled>บันทึกลงฐาน</button>
+          <span id="importMsg" class="text-sm ml-2"></span>
+        </div>
+
+        <div id="importPreviewWrap" class="mt-3 hidden">
+          <div class="text-sm text-gray-700 mb-1">พรีวิวที่จะบันทึก (กันซ้ำอัตโนมัติจากฐานปัจจุบัน)</div>
+          <div class="overflow-auto border rounded-lg">
+            <table class="min-w-full text-xs">
+              <thead class="bg-gray-100">
+                <tr>
+                  <th class="px-2 py-2 text-left">วันที่</th>
+                  <th class="px-2 py-2 text-left">รายได้</th>
+                  <th class="px-2 py-2 text-left">รายจ่าย</th>
+                  <th class="px-2 py-2 text-left">ลดหย่อน</th>
+                </tr>
+              </thead>
+              <tbody id="importPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- สรุปรวม -->
       <div id="summaryPanel" class="mb-4 p-4 rounded-xl bg-gray-50 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
         <div>
@@ -813,6 +846,148 @@ function bindMethodPanel(){
   dedupe.addEventListener('change', reRender);
 }
 window.addEventListener('load', bindMethodPanel);
+
+/* ========= Import from pasted text ========= */
+const importBox = document.getElementById('importBox');
+const parseImportBtn = document.getElementById('parseImportBtn');
+const saveImportBtn  = document.getElementById('saveImportBtn');
+const importMsg = document.getElementById('importMsg');
+const importPreviewWrap = document.getElementById('importPreviewWrap');
+const importPreviewBody = document.getElementById('importPreviewBody');
+
+let parsedRows = []; // [{date:Date, income, expense, deduction}]
+function cleanseNum(s){
+  if (!s) return 0;
+  // เก็บเฉพาะตัวเลขและคอมมา/จุด แล้วลบคอมมาออก
+  const only = String(s).replace(/[^\d.,-]/g,'').replace(/,/g,'');
+  const n = Number(only);
+  return Number.isFinite(n) ? n : 0;
+}
+function parseThaiBuddhistDate(dateStr, timeStr){
+  // รูปแบบ DD/MM/YYYY (อาจเป็น พ.ศ.) + HH:MM:SS
+  const [d,m,y] = dateStr.split('/').map(x=>parseInt(x,10));
+  const year = y>2400 ? y-543 : y; // ถ้าเป็น พ.ศ. ให้ลบ 543
+  const [hh,mm,ss] = timeStr.split(':').map(x=>parseInt(x,10));
+  return new Date(year, (m-1), d, hh||0, mm||0, ss||0);
+}
+function normalizeLine(line){
+  // ลบอักขระควบคุม/กวนสายตาออก เหลือแต่ที่จำเป็น
+  return line.replace(/[^\dA-Za-zก-๙\/:.,\s\-–—]/g,' ').replace(/\s+/g,' ').trim();
+}
+async function buildExistingKeySet(){
+  const rows = await fetchAllCalculations();
+  const set = new Set();
+  rows.forEach(r=>{
+    const key = [r.date, Number(r.income||0), Number(r.expense||0), Number(r.deduction||0)].join('|');
+    set.add(key);
+  });
+  return set;
+}
+function keyFromObj(o){
+  // ใช้คีย์ที่ตรงกับตารางประวัติ (วันที่แบบ th-TH)
+  const thDate = o.date.toLocaleString('th-TH');
+  return [thDate, o.income, o.expense, o.deduction].join('|');
+}
+
+parseImportBtn.addEventListener('click', async ()=>{
+  importMsg.textContent = '';
+  importPreviewBody.innerHTML = '';
+  importPreviewWrap.classList.add('hidden');
+  saveImportBtn.disabled = true;
+  parsedRows = [];
+
+  if (!auth || !auth.currentUser){ importMsg.textContent='กรุณาเข้าสู่ระบบก่อน'; importMsg.className='text-red-600 text-sm'; return; }
+
+  const raw = (importBox.value||'').split('\n').map(normalizeLine).filter(Boolean);
+  if (!raw.length){ importMsg.textContent='ยังไม่มีข้อความให้นำเข้า'; importMsg.className='text-red-600 text-sm'; return; }
+
+  // regex: DD/MM/YYYY HH:MM:SS income expense deduction net ...
+  const rx = /^(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2}:\d{2})\s+([\d,.\-]+)\s+([\d,.\-]+)\s+([\d,.\-]+)\s+([\d,.\-]+)/;
+
+  let matched = 0;
+  const tempRows = [];
+  for (const line of raw){
+    const m = line.match(rx);
+    if (!m) continue;
+    matched++;
+    const dt = parseThaiBuddhistDate(m[1], m[2]);
+    const income = cleanseNum(m[3]);
+    const expense = cleanseNum(m[4]);     // ใช้เป็นรายจ่ายตามจริงที่จะบันทึก
+    const deduction = cleanseNum(m[5]);
+    // m[6] = สุทธิ (ไม่ใช้บันทึก)
+    tempRows.push({ date: dt, income, expense, deduction });
+  }
+
+  if (!matched){
+    importMsg.textContent='ไม่พบแถวข้อมูลที่ตรงรูปแบบที่รองรับ'; importMsg.className='text-red-600 text-sm'; return;
+  }
+
+  // กันซ้ำกับฐาน
+  const existing = await buildExistingKeySet();
+  const uniqueRows = tempRows.filter(o => !existing.has(keyFromObj(o)));
+
+  parsedRows = uniqueRows;
+
+  // พรีวิว
+  if (!parsedRows.length){
+    importMsg.textContent = `ข้อมูลทั้งหมด ${tempRows.length} แถว ซ้ำกับฐานเดิม จึงไม่มีแถวใหม่ให้บันทึก`;
+    importMsg.className='text-yellow-700 text-sm';
+    return;
+  }
+
+  parsedRows.forEach(o=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="px-2 py-1 whitespace-nowrap">${o.date.toLocaleString('th-TH')}</td>
+      <td class="px-2 py-1 whitespace-nowrap">${o.income.toLocaleString('th-TH')}</td>
+      <td class="px-2 py-1 whitespace-nowrap">${o.expense.toLocaleString('th-TH')}</td>
+      <td class="px-2 py-1 whitespace-nowrap">${o.deduction.toLocaleString('th-TH')}</td>
+    `;
+    importPreviewBody.appendChild(tr);
+  });
+  importPreviewWrap.classList.remove('hidden');
+  importMsg.textContent = `พรีวิว ${parsedRows.length} แถว (ข้ามซ้ำแล้วจากทั้งหมด ${tempRows.length})`;
+  importMsg.className='text-blue-700 text-sm';
+  saveImportBtn.disabled = false;
+});
+
+saveImportBtn.addEventListener('click', async ()=>{
+  if (!auth || !auth.currentUser){ alert('ยังไม่ได้เข้าสู่ระบบ'); return; }
+  if (!parsedRows.length){ alert('ไม่มีข้อมูลให้บันทึก'); return; }
+  saveImportBtn.disabled = true;
+
+  try{
+    const batch = db.batch();
+    const col = db.collection('users').doc(auth.currentUser.uid).collection('calculations');
+
+    parsedRows.forEach(o=>{
+      const ref = col.doc();
+      batch.set(ref, {
+        income: o.income||0,
+        expense: o.expense||0,
+        deduction: o.deduction||0,
+        createdAt: firebase.firestore.Timestamp.fromDate(o.date),
+        receipts: []
+      });
+    });
+
+    await batch.commit();
+    importMsg.textContent = `บันทึกสำเร็จ ${parsedRows.length} แถว`;
+    importMsg.className='text-green-700 text-sm';
+    parsedRows = [];
+    saveImportBtn.disabled = true;
+    importPreviewWrap.classList.add('hidden');
+    importPreviewBody.innerHTML='';
+    importBox.value='';
+    // reload history
+    await loadHistory();
+  }catch(e){
+    console.error(e);
+    importMsg.textContent = `บันทึกล้มเหลว: ${e.message||e}`;
+    importMsg.className='text-red-600 text-sm';
+    saveImportBtn.disabled = false;
+  }
+});
 
 /* ========= Export CSV / PDF ========= */
 async function exportHistoryCSV() {
