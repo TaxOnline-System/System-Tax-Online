@@ -14,6 +14,9 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
+<!-- html2canvas (สำหรับแคปเจอร์ DOM → รูปภาพ ใส่เพิ่ม) -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
 <!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
@@ -31,6 +34,9 @@
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .nav-link{display:inline-block;margin:.25rem .4rem}
   #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า (เพิ่มใหม่) */
+  #print-clone-host{ position: fixed; left: -10000px; top: 0; width: 1000px; background: #fff; }
 </style>
 </head>
 <body class="font-sans">
@@ -814,7 +820,7 @@ function bindMethodPanel(){
 }
 window.addEventListener('load', bindMethodPanel);
 
-/* ========= Export CSV / PDF ========= */
+/* ========= Export CSV ========= */
 async function exportHistoryCSV() {
   try {
     const rows = await fetchAllCalculations();
@@ -845,19 +851,17 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* --- ฟอนต์ไทยสำหรับ jsPDF (เวอร์ชัน Product-Ready) --- */
+/* --- ฟอนต์ไทยสำหรับ jsPDF (ยังคงไว้ใช้กับเอกสารแบบตาราง) --- */
 async function ensureThaiFont() {
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) throw new Error('jsPDF ยังไม่พร้อม');
 
   const FONT_NAME = 'NotoSansThai';
   const VFS_FILE  = 'NotoSansThai-Regular.ttf';
-  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v1'; // versioned cache key
+  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v1';
 
-  // ฟอนต์ถูก register แล้วหรือยัง
   try { new jsPDF().setFont(FONT_NAME); return; } catch (_) {}
 
-  // ลองจาก cache
   const cached = localStorage.getItem(VFS_KEY);
   if (cached) {
     jsPDF.API.addFileToVFS(VFS_FILE, cached);
@@ -865,7 +869,6 @@ async function ensureThaiFont() {
     try { new jsPDF().setFont(FONT_NAME); return; } catch(_) {}
   }
 
-  // โหลดฟอนต์ (มี CORS)
   const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf';
   const res = await fetch(FONT_URL, { mode: 'cors' });
   if (!res.ok) throw new Error('โหลดฟอนต์ไทยไม่สำเร็จ: HTTP ' + res.status);
@@ -882,109 +885,96 @@ async function ensureThaiFont() {
   jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
   localStorage.setItem(VFS_KEY, base64);
 
-  // test อีกครั้ง
   try { new jsPDF().setFont(FONT_NAME); }
   catch (e) { throw new Error('ลงทะเบียนฟอนต์ไทยไม่สำเร็จ: ' + e.message); }
 }
 
-/* --- PDF (ไทย + ลิงก์คลิกได้ + ตัดซ้ำ) --- */
-async function exportHistoryPDF() {
+/* --- PDF Fallback: แคปเจอร์หน้าประวัติ (แก้ปัญหา PDF ขาว/ตัวเพี้ยน) --- */
+async function exportHistoryPDF_Fallback() {
   try {
-    const rows = await fetchAllCalculations();
-    const cfg  = getExpenseConfigFromUI();
-    const rowsUse = maybeDedupe(rows);
     const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
+    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
+    if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
 
-    if (!rowsUse || !rowsUse.length) { alert('ยังไม่มีข้อมูลประวัติ'); return; }
-    if (!jsPDF || !('autoTable' in (new jsPDF()))) { alert('ไม่พบ jsPDF หรือปลั๊กอิน autoTable'); return; }
+    // อัปเดตข้อมูลล่าสุดก่อนแคปเจอร์
+    await loadHistory();
 
-    await ensureThaiFont();
-    const FONT = 'NotoSansThai';
+    const src = document.getElementById('historySection');
+    if (!src) { alert('ไม่พบส่วนประวัติ'); return; }
 
-    // รวมยอด
-    let sumIncome=0,sumExpense=0,sumDeduct=0,sumNet=0;
-    rowsUse.forEach(r=>{
-      const e = computeExpenseUsed(r, cfg);
-      sumIncome += r.income||0;
-      sumExpense+= e;
-      sumDeduct += r.deduction||0;
-      sumNet    += Math.max(0,(r.income||0)-e-(r.deduction||0));
+    // host สำหรับโคลน (ซ่อนนอกจอ)
+    let host = document.getElementById('print-clone-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'print-clone-host';
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+
+    // โคลนเนื้อหาและทำให้มองเห็นได้เพื่อให้ html2canvas เรนเดอร์
+    const clone = src.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.width = '1000px';
+    clone.style.background = '#ffffff';
+    host.appendChild(clone);
+
+    // เผื่อเวลาให้ layout/ฟอนต์โหลด
+    await new Promise(r => setTimeout(r, 300));
+
+    // DOM -> Canvas
+    const scale = 2; // คมชัด
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight
     });
-    const sumTax = thaiProgressiveTax(sumNet);
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    // สร้างเอกสาร
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    doc.setFont(FONT, 'normal');
+    // ใส่ลง PDF A4 (ตัดหลายหน้าอัตโนมัติ)
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210
+    const pageH = pdf.internal.pageSize.getHeight();  // 297
 
-    // Header
-    doc.setFontSize(16);
-    doc.text('สรุปประวัติและภาษีรวม (TaxOnline)', 10, 14);
-    doc.setFontSize(10);
-    const u = auth && auth.currentUser;
-    doc.text(`ผู้ใช้: ${u ? (u.displayName || u.email) : '-'}`, 10, 20);
-    doc.text(`พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}`, 10, 26);
+    const imgPxW = canvas.width;
+    const imgPxH = canvas.height;
+    const ratio  = imgPxW / imgPxH;
+    const renderW = pageW;
+    const renderH = renderW / ratio;
 
-    // วิธีรายจ่ายรวม
-    const cfgText = cfg.method==='lumpsum'
-      ? `วิธีรายจ่าย: เหมาจ่าย ${cfg.percent||0}%${cfg.cap?` (เพดาน ${Number(cfg.cap).toLocaleString('th-TH')} บ.)`:''}`
-      : 'วิธีรายจ่าย: ตามจริง';
-    doc.setFontSize(11);
-    doc.text(cfgText, 10, 32);
-    doc.text(`รายได้รวม: ${sumIncome.toLocaleString('th-TH')}  รายจ่ายรวม: ${sumExpense.toLocaleString('th-TH')}  ลดหย่อนรวม: ${sumDeduct.toLocaleString('th-TH')}`, 10, 38);
-    doc.text(`เงินได้สุทธิ: ${sumNet.toLocaleString('th-TH')}  ภาษีรวม (ประมาณ): ${sumTax.toLocaleString('th-TH')}`, 10, 44);
+    if (renderH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
+    } else {
+      const pxPerMm = imgPxW / renderW;
+      const pagePxH = pageH * pxPerMm;
+      let sY = 0, page = 0;
 
-    // ตาราง
-    const head = [['วันที่','รายได้','รายจ่ายใช้คำนวณ','ลดหย่อน','สุทธิ','ใบเสร็จ']];
-    const body = rowsUse.map((r) => {
-      const expUsed = computeExpenseUsed(r, cfg);
-      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
-      return [
-        r.date || '',
-        (r.income ?? 0).toLocaleString('th-TH'),
-        expUsed.toLocaleString('th-TH'),
-        (r.deduction ?? 0).toLocaleString('th-TH'),
-        net.toLocaleString('th-TH'),
-        (r.receipts && r.receipts.length) ? r.receipts.map((x,i)=>`ไฟล์ ${i+1}`).join(' , ') : '—'
-      ];
-    });
+      while (sY < imgPxH) {
+        const sliceH = Math.min(pagePxH, imgPxH - sY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = imgPxW;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
 
-    doc.autoTable({
-      head, body,
-      startY: 50,
-      styles: { font: FONT, fontSize: 9, cellPadding: 2 },
-      headStyles: { font: FONT, fontStyle: 'normal', fillColor: [243,244,246], textColor: 0 },
-      columnStyles: { 0:{cellWidth:32}, 1:{cellWidth:26}, 2:{cellWidth:32}, 3:{cellWidth:26}, 4:{cellWidth:26}, 5:{cellWidth:'auto'} },
-      didDrawPage: () => {
-        const pageCount = doc.internal.getNumberOfPages();
-        const str = `หน้า ${doc.internal.getCurrentPageInfo().pageNumber} / ${pageCount}`;
-        doc.setFont(FONT, 'normal');
-        doc.setFontSize(9);
-        doc.text(str, 200 - doc.getTextWidth(str) - 10, 291);
-      }
-    });
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
 
-    // ลิงก์ใบเสร็จ (ป้ายสั้น + คลิกได้)
-    let y = doc.lastAutoTable.finalY + 6;
-    const links = [];
-    rowsUse.forEach((r, idx) => {
-      (r.receipts || []).forEach((x, i) => {
-        if (x.webViewLink) links.push({ label: `แถว ${idx + 1} → ไฟล์ ${i + 1}`, url: x.webViewLink });
-      });
-    });
-
-    if (links.length) {
-      doc.setFont(FONT, 'normal');
-      doc.setFontSize(11);
-      doc.text('ลิงก์ใบเสร็จ (คลิกได้):', 10, y);
-      y += 6; doc.setFontSize(10);
-      for (const item of links) {
-        doc.textWithLink(item.label, 10, y, { url: item.url });
-        y += 6;
-        if (y > 280) { doc.addPage(); doc.setFont(FONT,'normal'); y = 14; }
+        sY += sliceH;
+        page += 1;
       }
     }
 
-    doc.save('taxonline_summary.pdf');
+    pdf.save('taxonline_summary.pdf');
+
+    // cleanup
+    host.innerHTML = '';
   } catch (e) {
     console.error(e);
     alert(e.message || e);
@@ -1000,7 +990,8 @@ async function openDriveFolder() {
 }
 
 document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
-document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF);
+/* เปลี่ยนให้กดดาวน์โหลด PDF ใช้ fallback ใหม่นี้ */
+document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Fallback);
 document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
 
 /* ========= BOOT ========= */
@@ -1100,7 +1091,8 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       ['firebase.firestore', !!firebase.firestore],
       ['Chart', !!window.Chart],
       ['jsPDF', !!(window.jspdf && window.jspdf.jsPDF)],
-      ['GIS (google.accounts)', !!(window.google && google.accounts)]
+      ['GIS (google.accounts)', !!(window.google && google.accounts)],
+      ['html2canvas', !!window.html2canvas]
     ];
     checks.forEach(([k,v])=> diag.push(`${v?'[OK]':'[X]'} ${k}`));
     showDiag(diag);
