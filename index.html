@@ -14,10 +14,10 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-<!-- html2canvas (แคปเจอร์ DOM → รูปภาพ) -->
+<!-- html2canvas (สำหรับแคปเจอร์ DOM → รูปภาพ ใส่เพิ่ม) -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<!-- Firebase v8 -->
+<!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -26,40 +26,19 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-  body{
-    background:linear-gradient(-45deg,#e0c3fc,#8ec5fc,#fbc2eb,#a1c4fd);
-    background-size:400% 400%;
-    animation:gradientBG 15s ease infinite;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
+  body{background:linear-gradient(-45deg,#e0c3fc,#8ec5fc,#fbc2eb,#a1c4fd);background-size:400% 400%;animation:gradientBG 15s ease infinite}
   @keyframes gradientBG{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-  .fade-in{animation:fadeIn .7s ease-in}
-  @keyframes fadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeIn .7s ease-in}@keyframes fadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
   #splash{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:1;transition:opacity .8s ease}
   .splash-spinner{width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;animation:spin 1.4s linear infinite}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .nav-link{display:inline-block;margin:.25rem .4rem}
   #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
 
-  /* โฮสต์ของเนื้อหาที่จะโคลนไปแคปเจอร์ (ซ่อนไว้นอกจอ) */
-  #print-clone-host{
-    position: fixed; left: -10000px; top: 0;
-    width: 1240px; /* กว้าง ~1240px เพื่อให้สเกลขึ้นคมง่าย */
-    background: #fff;
-  }
+  /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า (เพิ่มใหม่) */
+  #print-clone-host{ position: fixed; left: -10000px; top: 0; width: 1000px; background: #fff; }
 
-  /* ปิดของตกแต่ง/เงา/แอนิเมชันบน clone (ลดเบลอ) */
-  .print-sanitized, .print-sanitized *{
-    animation: none !important;
-    transition: none !important;
-    filter: none !important;
-    backdrop-filter: none !important;
-    box-shadow: none !important;
-  }
-
-  /* ลดสิ่งกวนตอนพิมพ์ */
+  /* ---- Print safety: ลดปัญหาเวลาแคปเจอร์เป็น PDF ---- */
   @media print {
     body { animation: none !important; }
     #splash, header, footer, .fixed { display: none !important; }
@@ -86,6 +65,7 @@
       <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">บันทึกรายการ</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="history">คำนวณภาษี</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="profile">โปรไฟล์</button>
+      <!-- ✨ เพิ่มปุ่มเมนูคู่มือ -->
       <button class="nav-link text-gray-700 hover:underline" data-nav="guide">คู่มือใช้งาน</button>
       <button id="loginNav" class="nav-link text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
       <button id="logoutBtn" class="nav-link text-red-600 hover:underline hidden">ออกจากระบบ</button>
@@ -113,6 +93,7 @@
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
       <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มบันทึกรายการ</button>
       <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
+      <!-- (ทางเลือก) ปุ่มลัดไปคู่มือ -->
       <button class="bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-full text-lg shadow transition border" data-nav="guide">อ่านคู่มือ</button>
     </div>
   </section>
@@ -304,7 +285,7 @@
     </div>
   </section>
 
-  <!-- Guide -->
+  <!-- ✨ Guide -->
   <section id="guideSection" class="hidden fade-in px-4">
     <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
       <div class="flex items-center justify-between gap-3">
@@ -317,6 +298,7 @@
       <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
 
       <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
+
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
           <ul class="list-disc ml-5 space-y-1">
@@ -385,7 +367,7 @@
           <p class="text-sm text-gray-600 mt-1">*ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับที่ปรึกษาภาษีหรือกรมสรรพากรอีกครั้ง</p>
         </section>
 
-        <!-- FAQ -->
+        <!-- ✅ แก้โครงสร้าง FAQ (ลบ </details> เกิน) -->
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
 
@@ -619,7 +601,7 @@ const sections = {
   profile: document.getElementById('profileSection'),
   calculator: document.getElementById('calculatorSection'),
   history: document.getElementById('historySection'),
-  guide: document.getElementById('guideSection'),
+  guide: document.getElementById('guideSection'), // ✨ เพิ่มคู่มือ
   diag: document.getElementById('diagWrap')
 };
 const userGreeting = document.getElementById('userGreeting');
@@ -1006,122 +988,237 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* ========= PDF (คมชัดสูง) ========= */
-/** ค่าตั้งต้นสำหรับความคมชัด/ขนาดหน้า */
-const PDF_PAGE = { unit: 'mm', format: 'a4', orientation: 'p' };
-const PAGE_MARGIN_MM = 8;          // margin รอบ ๆ
-const PAGE_OVERLAP_MM = 2;         // ซ้อนหน้าถัดไป 2 มม. กันรอยต่อ
-const HIRES_MODE = true;           // ปรับ false ถ้าต้องการไฟล์เล็กลง
-
-/** สร้าง PDF จาก section โดยโคลน DOM → html2canvas (PNG lossless) → แบ่งหน้า */
-async function exportSectionAsPDF(sectionEl, filename){
+/* --- ฟอนต์ไทยสำหรับ jsPDF (ยังคงไว้ใช้กับเอกสารแบบตาราง) --- */
+async function ensureThaiFont() {
   const { jsPDF } = window.jspdf || {};
-  if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
-  if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
-  if (!sectionEl) { alert('ไม่พบส่วนที่จะส่งออก'); return; }
+  if (!jsPDF) throw new Error('jsPDF ยังไม่พร้อม');
 
-  // โฮสต์ clone
-  let host = document.getElementById('print-clone-host');
-  if (!host) {
-    host = document.createElement('div');
-    host.id = 'print-clone-host';
-    document.body.appendChild(host);
+  const FONT_NAME = 'NotoSansThai';
+  const VFS_FILE  = 'NotoSansThai-Regular.ttf';
+  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v1';
+
+  try { new jsPDF().setFont(FONT_NAME); return; } catch (_) {}
+
+  const cached = localStorage.getItem(VFS_KEY);
+  if (cached) {
+    jsPDF.API.addFileToVFS(VFS_FILE, cached);
+    jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
+    try { new jsPDF().setFont(FONT_NAME); return; } catch(_) {}
   }
-  host.innerHTML = '';
 
-  // โคลนและ sanitize
-  const clone = sectionEl.cloneNode(true);
-  clone.classList.remove('hidden');
-  clone.classList.add('print-sanitized');
-  clone.style.display = 'block';
-  clone.style.background = '#ffffff';
+  const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf';
+  const res = await fetch(FONT_URL, { mode: 'cors' });
+  if (!res.ok) throw new Error('โหลดฟอนต์ไทยไม่สำเร็จ: HTTP ' + res.status);
 
-  // เปิด details ทั้งหมด
-  clone.querySelectorAll('details').forEach(d => d.open = true);
-
-  // กำหนดความกว้าง target (ยิ่งกว้าง → ยิ่งคม)
-  const TARGET_WIDTH_PX = 1340; // 1240–1440 แนะนำ
-  clone.style.width = TARGET_WIDTH_PX + 'px';
-
-  host.appendChild(clone);
-
-  // รอฟอนต์ + layout
-  if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch(_){} }
-  await new Promise(r => setTimeout(r, 400));
-
-  // สเกลจาก DPR
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-  const scale = HIRES_MODE ? Math.min(3, dpr * 2) : Math.max(1, dpr);
-
-  // แคปเจอร์
-  const canvas = await html2canvas(clone, {
-    backgroundColor: '#ffffff',
-    scale,
-    useCORS: true,
-    allowTaint: false,
-    logging: false,
-    windowWidth: clone.scrollWidth,
-    windowHeight: clone.scrollHeight,
-    foreignObjectRendering: false,
-    letterRendering: true
+  const blob = await res.blob();
+  const base64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
   });
 
-  if (!canvas || !canvas.width || !canvas.height) {
-    alert('แคปเจอร์ไม่สำเร็จ'); return;
-  }
+  jsPDF.API.addFileToVFS(VFS_FILE, base64);
+  jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
+  localStorage.setItem(VFS_KEY, base64);
 
-  // สร้าง PDF และคำนวณสัดส่วน
-  const pdf = new jsPDF(PDF_PAGE);
-  const pageW = pdf.internal.pageSize.getWidth();
-  const pageH = pdf.internal.pageSize.getHeight();
-  const contentW = pageW - (PAGE_MARGIN_MM * 2);
-  const contentH = pageH - (PAGE_MARGIN_MM * 2);
-
-  const imgPxW = canvas.width;
-  const imgPxH = canvas.height;
-  const ratio = imgPxW / imgPxH;
-  const renderW = contentW;
-  const renderH = renderW / ratio;
-  const pxPerMm = imgPxW / renderW;
-  const pagePxH = contentH * pxPerMm;
-  const overlapPx = PAGE_OVERLAP_MM * pxPerMm;
-
-  // แบ่งหน้า (มี overlap)
-  let sY = 0; let page = 0;
-  while (sY < imgPxH) {
-    const sliceH = Math.min(pagePxH, imgPxH - sY);
-    const slice = document.createElement('canvas');
-    slice.width = imgPxW;
-    slice.height = sliceH;
-    const ctx = slice.getContext('2d');
-    ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
-
-    // ใช้ PNG (lossless) เพื่อตัวหนังสือคม
-    const imgData = slice.toDataURL('image/png');
-
-    if (page > 0) pdf.addPage();
-    pdf.addImage(imgData, 'PNG', PAGE_MARGIN_MM, PAGE_MARGIN_MM, renderW, (sliceH/pxPerMm), undefined, 'FAST');
-
-    sY += (sliceH - overlapPx);
-    page += 1;
-  }
-
-  pdf.save(filename);
-  host.innerHTML = '';
+  try { new jsPDF().setFont(FONT_NAME); }
+  catch (e) { throw new Error('ลงทะเบียนฟอนต์ไทยไม่สำเร็จ: ' + e.message); }
 }
 
-/* ปุ่ม: สรุปประวัติเป็น PDF (คมชัดสูง) */
-async function exportHistoryPDF_HiRes() {
-  if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
-  await loadHistory(); // ให้ข้อมูลล่าสุดแสดงบน DOM ก่อน
-  const src = document.getElementById('historySection');
-  await exportSectionAsPDF(src, 'taxonline_summary.pdf');
+/* --- PDF Fallback: แคปเจอร์หน้าประวัติ (แก้ปัญหา PDF ขาว/ตัวเพี้ยน) --- */
+async function exportHistoryPDF_Fallback() {
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
+    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
+    if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
+
+    // อัปเดตข้อมูลล่าสุดก่อนแคปเจอร์
+    await loadHistory();
+
+    const src = document.getElementById('historySection');
+    if (!src) { alert('ไม่พบส่วนประวัติ'); return; }
+
+    // host สำหรับโคลน (ซ่อนนอกจอ)
+    let host = document.getElementById('print-clone-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'print-clone-host';
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+
+    // โคลนเนื้อหาและทำให้มองเห็นได้เพื่อให้ html2canvas เรนเดอร์
+    const clone = src.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.width = '1000px';
+    clone.style.background = '#ffffff';
+    host.appendChild(clone);
+
+    // เผื่อเวลาให้ layout/ฟอนต์โหลด
+    await new Promise(r => setTimeout(r, 300));
+
+    // DOM -> Canvas
+    const scale = 2; // คมชัด
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    // ใส่ลง PDF A4 (ตัดหลายหน้าอัตโนมัติ)
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210
+    const pageH = pdf.internal.pageSize.getHeight();  // 297
+
+    const imgPxW = canvas.width;
+    const imgPxH = canvas.height;
+    const ratio  = imgPxW / imgPxH;
+    const renderW = pageW;
+    const renderH = renderW / ratio;
+
+    if (renderH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
+    } else {
+      const pxPerMm = imgPxW / renderW;
+      const pagePxH = pageH * pxPerMm;
+      let sY = 0, page = 0;
+
+      while (sY < imgPxH) {
+        const sliceH = Math.min(pagePxH, imgPxH - sY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = imgPxW;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
+
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
+
+        sY += sliceH;
+        page += 1;
+      }
+    }
+
+    pdf.save('taxonline_summary.pdf');
+
+    // cleanup
+    host.innerHTML = '';
+  } catch (e) {
+    console.error(e);
+    alert(e.message || e);
+  }
 }
 
-/* ปุ่ม: คู่มือเป็น PDF (คมชัดสูง) */
+/* --- ✨ PDF ของคู่มือ (แคปเจอร์หน้า guide) — ปรับใหม่ให้กันหน้าเปล่า/ฟอนต์หาย --- */
 async function exportGuidePDF() {
-  const src = document.getElementById('guideSection');
-  await exportSectionAsPDF(src, 'TaxOnline_User_Guide.pdf');
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
+    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
+
+    const src = document.getElementById('guideSection');
+    if (!src) { alert('ไม่พบหน้าคู่มือ'); return; }
+
+    // host สำหรับโคลน (ซ่อนนอกจอ)
+    let host = document.getElementById('print-clone-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'print-clone-host';
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+    host.style.position = 'fixed';
+    host.style.left = '-10000px';
+    host.style.top = '0';
+    host.style.width = '1000px';
+    host.style.background = '#ffffff';
+    host.style.zIndex = '-1';
+    host.style.pointerEvents = 'none';
+
+    const clone = src.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.width = '1000px';
+    clone.style.background = '#ffffff';
+
+    // เปิด details ทั้งหมด เพื่อให้เนื้อหาแสดงครบก่อนแคปเจอร์
+    clone.querySelectorAll('details').forEach(d => d.open = true);
+
+    host.appendChild(clone);
+
+    // รอฟอนต์และเลย์เอาต์
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (_) {}
+    }
+    await new Promise(r => setTimeout(r, 400));
+
+    const scale = 2;
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight,
+      foreignObjectRendering: false
+    });
+
+    if (!canvas || !canvas.width || !canvas.height) {
+      throw new Error('แคปเจอร์ไม่สำเร็จ (canvas ว่าง)');
+    }
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+
+    const imgPxW = canvas.width;
+    const imgPxH = canvas.height;
+    const ratio  = imgPxW / imgPxH;
+    const renderW = pageW;
+    const renderH = renderW / ratio;
+
+    if (renderH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
+    } else {
+      const pxPerMm = imgPxW / renderW;
+      const pagePxH = pageH * pxPerMm;
+      let sY = 0, page = 0;
+
+      while (sY < imgPxH) {
+        const sliceH = Math.min(pagePxH, imgPxH - sY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = imgPxW;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
+
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
+
+        sY += sliceH;
+        page += 1;
+      }
+    }
+
+    pdf.save('TaxOnline_User_Guide.pdf');
+    host.innerHTML = '';
+  } catch (e) {
+    console.error(e);
+    alert('สร้าง PDF ไม่สำเร็จ: ' + (e.message || e));
+  }
 }
 
 async function openDriveFolder() {
@@ -1133,9 +1230,10 @@ async function openDriveFolder() {
 }
 
 document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
-/* ใช้เวอร์ชัน Hi-Res ใหม่แทน */
-document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_HiRes);
+/* เปลี่ยนให้กดดาวน์โหลด PDF ใช้ fallback ใหม่นี้ */
+document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Fallback);
 document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
+/* ✨ ผูกปุ่มดาวน์โหลดคู่มือ */
 document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', exportGuidePDF);
 
 /* ========= BOOT ========= */
@@ -1150,7 +1248,7 @@ document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', export
       authDomain: "tax-online-6afdd.firebaseapp.com",
       projectId: "tax-online-6afdd",
       appId: "1:959276043439:web:f358ce055687efea5d185a"
-      // storageBucket: "your-bucket.appspot.com"
+      // ถ้ามี Firebase Storage ให้เพิ่ม: storageBucket: "your-bucket.appspot.com"
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
