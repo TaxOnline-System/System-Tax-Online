@@ -276,38 +276,166 @@
     </div>
   </section>
 
-  <!-- ✨ Guide -->
-  <section id="guideSection" class="hidden fade-in px-4">
-    <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-      <div class="flex items-center justify-between gap-3">
-        <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
-        <a
-          id="downloadGuidePdfBtn"
-          href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
-          target="_blank" rel="noopener"
-          class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
-        >
-          ดาวน์โหลดคู่มือ (Drive)
-        </a>
-      </div>
-
-      <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
-
-      <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
-        <!-- (เนื้อหาเหมือนเดิม) -->
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
-          <ul class="list-disc ml-5 space-y-1">
-            <li><b>บันทึกรายการ</b> รายได้/รายจ่าย/ลดหย่อน พร้อมแนบใบเสร็จขึ้น Google Drive ส่วนตัวของคุณ</li>
-            <li><b>คำนวณภาษี</b> รวมทุกบันทึก เลือกวิธีคิดรายจ่าย (ตามจริง/เหมาจ่าย) และตัดรายการซ้ำ</li>
-            <li><b>โปรไฟล์</b> จัดการข้อมูลส่วนตัว (ชื่อ-ที่อยู่-โทรศัพท์)</li>
-            <li><b>ส่งออก</b> ประวัติเป็น CSV หรือสรุปเป็น PDF</li>
-          </ul>
-        </section>
-        <!-- ... ข้ามรายละเอียดซ้ำ ... -->
-      </div>
+<!-- ✨ Guide -->
+<section id="guideSection" class="hidden fade-in px-4">
+  <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+    <div class="flex items-center justify-between gap-3">
+      <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
+      <!-- ✅ ลิงก์ไป Google Drive -->
+      <a
+        id="downloadGuidePdfBtn"
+        href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
+        target="_blank" rel="noopener"
+        class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
+      >
+        ดาวน์โหลดคู่มือ
+      </a>
     </div>
-  </section>
+
+    <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
+
+    <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
+
+      <!-- 1 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
+        <ul class="list-disc ml-5 space-y-1">
+          <li><b>บันทึกรายการ</b> รายได้/รายจ่าย/ลดหย่อน พร้อมแนบใบเสร็จขึ้น Google Drive ส่วนตัวของคุณ</li>
+          <li><b>คำนวณภาษี</b> รวมทุกบันทึก เลือกวิธีคิดรายจ่าย (ตามจริง/เหมาจ่าย) และตัดรายการซ้ำ</li>
+          <li><b>โปรไฟล์</b> จัดการข้อมูลส่วนตัว (ชื่อ-ที่อยู่-โทรศัพท์)</li>
+          <li><b>ส่งออก</b> ประวัติเป็น CSV หรือสรุปเป็น PDF สำหรับแนบยื่นภาษี</li>
+        </ul>
+      </section>
+
+      <!-- 2 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">2) ก่อนเริ่มใช้งาน</h4>
+        <ol class="list-decimal ml-5 space-y-2">
+          <li>เปิดเว็บด้วย Chrome หรือ Edge เวอร์ชันล่าสุด เพื่อประสิทธิภาพสูงสุด</li>
+          <li>สมัคร/เข้าสู่ระบบ ด้วยอีเมล + รหัสผ่าน หรือบัญชี Google</li>
+          <li>เชื่อมต่อ Google Drive โดยกดปุ่ม <b>“เชื่อมต่อ Google Drive”</b> ที่มุมขวาบน</li>
+        </ol>
+      </section>
+
+      <!-- 3 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">3) การใช้งานพื้นฐาน</h4>
+
+        <div class="space-y-4">
+          <div>
+            <p class="font-medium">3.1 เข้าสู่ระบบ/สมัครสมาชิก</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่หน้า <b>เข้าสู่ระบบ</b> เลือกแท็บ “เข้าสู่ระบบ” หรือ “สมัครสมาชิก”</li>
+              <li>กด <b>เข้าสู่ระบบด้วย Google</b> เพื่อความสะดวก</li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.2 จัดการโปรไฟล์</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่เมนู <b>โปรไฟล์</b> แก้ไขชื่อ-ที่อยู่-เบอร์โทร แล้วกด <b>บันทึกโปรไฟล์</b></li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.3 บันทึกรายการ</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่ <b>บันทึกรายการ</b> กรอก รายได้ / รายจ่าย / ลดหย่อน</li>
+              <li>แนบไฟล์ใบเสร็จ (JPG, PNG, PDF) ได้หลายไฟล์ ระบบจะอัปโหลดไปยังโฟลเดอร์ <b>TaxOnline Receipts</b> ใน Google Drive ของคุณ</li>
+              <li>กด <b>บันทึกรายการ</b></li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.4 คำนวณภาษี</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่ <b>คำนวณภาษี</b> แล้วกดปุ่ม <b>รีเฟรช</b> เพื่อโหลดข้อมูลล่าสุด</li>
+              <li>เลือกวิธีคิดรายจ่าย <b>“ตามจริง”</b> หรือ <b>“เหมาจ่าย”</b> (ตั้งค่าเปอร์เซ็นต์และเพดานได้)</li>
+              <li>ติ๊ก <b>“ตัดรายการที่ซ้ำ”</b> เพื่อป้องกันข้อมูลซ้ำ</li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.5 ส่งออก / ดาวน์โหลด</p>
+            <ul class="list-disc ml-5">
+              <li>กด <b>ดาวน์โหลด CSV</b> เพื่อได้ไฟล์ Excel รายละเอียดทั้งหมด</li>
+              <li>กด <b>ดาวน์โหลดสรุป PDF</b> เพื่อได้เอกสารสรุปภาษี (แนบใบเสร็จท้ายเล่ม)</li>
+              <li>กด <b>เปิดโฟลเดอร์ Drive</b> เพื่อเข้าไปดูใบเสร็จใน Google Drive</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">4) การคิดภาษีโดยประมาณ</h4>
+        <p>
+          ระบบจะคำนวณภาษีโดยประมาณจากสูตร <br/>
+          <b>ภาษี = รายได้ − รายจ่าย − ลดหย่อน</b> แล้วนำไปคิดตามชั้นภาษีแบบขั้นบันได
+        </p>
+        <p class="text-sm text-gray-600 mt-1">
+          *ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับกรมสรรพากรหรือที่ปรึกษาภาษีอีกครั้ง
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">กดเชื่อมต่อ Google Drive แล้วไม่ขึ้นว่าเชื่อมต่อ</summary>
+          <div class="mt-2 text-sm">
+            ตรวจสอบว่าอินเทอร์เน็ตปกติ และเบราว์เซอร์ไม่บล็อกป๊อปอัป ลองกดเชื่อมต่อใหม่ หรือรีเฟรชหน้าเว็บ
+          </div>
+        </details>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยนหรือหน้าเปล่า</summary>
+          <div class="mt-2 text-sm">
+            หากตัวอักษรเพี้ยน ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ระบบจะสร้าง PDF แบบตัวหนังสือจริงและแนบรูปใบเสร็จท้ายเล่ม
+          </div>
+        </details>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">ดูไฟล์ใบเสร็จที่อัปโหลดแล้วได้ที่ไหน</summary>
+          <div class="mt-2 text-sm">
+            ไปที่หน้า “คำนวณภาษี” จะเห็นคอลัมน์ “ไฟล์” พร้อมลิงก์ไปยังไฟล์ใน Google Drive
+            หรือกด “เปิดโฟลเดอร์ Drive” ที่มุมบน
+          </div>
+        </details>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">ระบบขึ้น “กำลังโหลด” ค้างไว้</summary>
+          <div class="mt-2 text-sm">
+            ให้รีเฟรชหน้า หรือปิดเบราว์เซอร์แล้วเปิดใหม่ หากยังไม่หายตรวจสอบอินเทอร์เน็ตหรือรอ 1-2 นาที
+          </div>
+        </details>
+      </section>
+
+      <!-- 6 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">6) เคล็ดลับ & ความปลอดภัย</h4>
+        <ul class="list-disc ml-5 space-y-1">
+          <li>ตั้งชื่อไฟล์ใบเสร็จให้สื่อความหมาย เช่น <code>2025-03-10_kerry_350บาท.pdf</code></li>
+          <li>ลงชื่อเข้าใช้เฉพาะอุปกรณ์ที่เชื่อถือ และกด “ออกจากระบบ” เมื่อเลิกใช้งาน</li>
+          <li>สำรองไฟล์ CSV/PDF ไว้เป็นระยะ เผื่อกรณีฉุกเฉิน</li>
+        </ul>
+      </section>
+
+      <!-- 7 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">7) ติดต่อผู้ดูแลระบบ</h4>
+        <p>
+          อีเมลติดต่อ: 
+          <a href="mailto:support@example.com" class="text-blue-600 hover:underline">
+            support@example.com
+          </a>
+        </p>
+      </section>
+
+    </div>
+  </div>
+</section>
 
   <!-- Diagnostics -->
   <section id="diagWrap" class="hidden fade-in px-4">
