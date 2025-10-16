@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TaxOnline - ระบบเว็บไซต์คำนวณภาษีสำหรับพ่อค้า แม่ค้าออนไลน์</title>
+<title>TaxOnline - ระบบเว็บไซต์คำนวณภาษีสำหรับพ่อค้า แม่ค้าออนไลน์ </title>
 
 <!-- Tailwind -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-<!-- html2canvas (ยังคงโหลดไว้ เผื่อใช้ในบางกรณี) -->
+<!-- html2canvas (ยังคงโหลดไว้ แต่ไม่ได้ใช้สำหรับสรุปภาษีหลักแล้ว) -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
@@ -28,22 +28,14 @@
 <style>
   body{background:linear-gradient(-45deg,#e0c3fc,#8ec5fc,#fbc2eb,#a1c4fd);background-size:400% 400%;animation:gradientBG 15s ease infinite}
   @keyframes gradientBG{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-  .fade-in{animation:fadeIn .7s ease-in}
-  @keyframes fadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fadeIn .7s ease-in}@keyframes fadeIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
   #splash{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:1;transition:opacity .8s ease}
   .splash-spinner{width:60px;height:60px;border:8px solid transparent;border-top-color:#ec4899;border-radius:50%;animation:spin 1.4s linear infinite}
   @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
   .nav-link{display:inline-block;margin:.25rem .4rem}
   #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
-
-  /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า */
   #print-clone-host{ position: fixed; left: -10000px; top: 0; width: 1000px; background: #fff; }
-
-  /* Print safety */
-  @media print {
-    body { animation: none !important; }
-    #splash, header, footer, .fixed { display: none !important; }
-  }
+  @media print { body { animation: none !important; } #splash, header, footer, .fixed { display: none !important; } }
 </style>
 </head>
 <body class="font-sans">
@@ -58,7 +50,7 @@
 <header class="bg-white shadow p-4 fixed w-full z-30 top-0">
   <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
     <div class="flex items-center gap-3 mb-2 sm:mb-0">
-      <h1 class="text-2xl font-bold text-pink-600">TaxOnline Vers 0.2</h1>
+      <h1 class="text-2xl font-bold text-pink-600">TaxOnline Vers 0.2 </h1>
       <span id="userGreeting" class="text-sm text-gray-600 hidden">สวัสดี, …</span>
     </div>
     <nav class="text-center sm:text-right">
@@ -284,152 +276,166 @@
     </div>
   </section>
 
-  <!-- Guide -->
-  <section id="guideSection" class="hidden fade-in px-4">
-    <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-      <div class="flex items-center justify-between gap-3">
-        <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
-        <a
-          id="downloadGuidePdfBtn"
-          href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
-          target="_blank" rel="noopener"
-          class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
-        >
-          ดาวน์โหลดคู่มือ
-        </a>
-      </div>
-
-      <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
-
-      <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
-          <ul class="list-disc ml-5 space-y-1">
-            <li><b>บันทึกรายการ</b> รายได้/รายจ่าย/ลดหย่อน พร้อมแนบใบเสร็จขึ้น Google Drive ส่วนตัวของคุณ</li>
-            <li><b>คำนวณภาษี</b> รวมทุกบันทึก เลือกวิธีคิดรายจ่าย (ตามจริง/เหมาจ่าย) และตัดรายการซ้ำ</li>
-            <li><b>โปรไฟล์</b> จัดการข้อมูลส่วนตัว (ชื่อ-ที่อยู่-โทรศัพท์)</li>
-            <li><b>ส่งออก</b> ประวัติเป็น CSV หรือสรุปเป็น PDF สำหรับแนบยื่นภาษี</li>
-          </ul>
-        </section>
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">2) ก่อนเริ่มใช้งาน</h4>
-          <ol class="list-decimal ml-5 space-y-2">
-            <li>เปิดเว็บด้วย Chrome หรือ Edge เวอร์ชันล่าสุด เพื่อประสิทธิภาพสูงสุด</li>
-            <li>สมัคร/เข้าสู่ระบบ ด้วยอีเมล + รหัสผ่าน หรือบัญชี Google</li>
-            <li>เชื่อมต่อ Google Drive โดยกดปุ่ม <b>“เชื่อมต่อ Google Drive”</b> ที่มุมขวาบน</li>
-          </ol>
-        </section>
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">3) การใช้งานพื้นฐาน</h4>
-
-          <div class="space-y-3">
-            <div>
-              <p class="font-medium">3.1 เข้าสู่ระบบ/สมัครสมาชิก</p>
-              <ul class="list-disc ml-5">
-                <li>ไปที่หน้า <b>เข้าสู่ระบบ</b> เลือกแท็บ “เข้าสู่ระบบ” หรือ “สมัครสมาชิก”</li>
-                <li>กด <b>เข้าสู่ระบบด้วย Google</b> เพื่อความสะดวก</li>
-              </ul>
-            </div>
-
-            <div>
-              <p class="font-medium">3.2 จัดการโปรไฟล์</p>
-              <ul class="list-disc ml-5">
-                <li>ไปที่เมนู <b>โปรไฟล์</b> แก้ไขชื่อ-ที่อยู่-เบอร์โทร แล้วกด <b>บันทึกโปรไฟล์</b></li>
-              </ul>
-            </div>
-
-            <div>
-              <p class="font-medium">3.3 บันทึกรายการ</p>
-              <ul class="list-disc ml-5">
-                <li>ไปที่ <b>บันทึกรายการ</b> กรอก รายได้ / รายจ่าย / ลดหย่อน</li>
-                <li>แนบไฟล์ใบเสร็จ (JPG, PNG, PDF) ได้หลายไฟล์ ระบบจะอัปโหลดไปยังโฟลเดอร์ <b>TaxOnline Receipts</b> ใน Google Drive ของคุณ</li>
-                <li>กด <b>บันทึกรายการ</b></li>
-              </ul>
-            </div>
-
-            <div>
-              <p class="font-medium">3.4 คำนวณภาษี</p>
-              <ul class="list-disc ml-5">
-                <li>ไปที่ <b>คำนวณภาษี</b> แล้วกดปุ่ม <b>รีเฟรช</b> เพื่อโหลดข้อมูลล่าสุด</li>
-                <li>เลือกวิธีคิดรายจ่าย <b>“ตามจริง”</b> หรือ <b>“เหมาจ่าย”</b> (ตั้งค่าเปอร์เซ็นต์และเพดานได้)</li>
-                <li>ติ๊ก <b>“ตัดรายการที่ซ้ำ”</b> เพื่อป้องกันข้อมูลซ้ำ</li>
-              </ul>
-            </div>
-
-            <div>
-              <p class="font-medium">3.5 ส่งออก / ดาวน์โหลด</p>
-              <ul class="list-disc ml-5">
-                <li>กด <b>ดาวน์โหลด CSV</b> เพื่อได้ไฟล์ Excel รายละเอียดทั้งหมด</li>
-                <li>กด <b>ดาวน์โหลดสรุป PDF</b> เพื่อได้เอกสารสรุปภาษี (แนบไฟล์อ้างอิงไว้ท้ายเล่ม)</li>
-                <li>กด <b>เปิดโฟลเดอร์ Drive</b> เพื่อเข้าไปดูใบเสร็จใน Google Drive</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">4) การคิดภาษีโดยประมาณ</h4>
-          <p>
-            ระบบจะคำนวณภาษีโดยประมาณจากสูตร <br/>
-            <b>ฐานภาษี = รายได้ − รายจ่าย − ลดหย่อน</b> แล้วนำไปคิดตามชั้นภาษีแบบขั้นบันได
-          </p>
-          <p class="text-sm text-gray-600 mt-1">
-            *ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับกรมสรรพากรหรือที่ปรึกษาภาษีอีกครั้ง
-          </p>
-        </section>
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
-
-          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
-            <summary class="cursor-pointer font-medium">กดเชื่อมต่อ Google Drive แล้วไม่ขึ้นว่าเชื่อมต่อ</summary>
-            <div class="mt-2 text-sm">
-              ตรวจสอบว่าอินเทอร์เน็ตปกติ และเบราว์เซอร์ไม่บล็อกป๊อปอัป ลองกดเชื่อมต่อใหม่ หรือรีเฟรชหน้าเว็บ
-            </div>
-          </details>
-
-          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
-            <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยนหรือหน้าเปล่า</summary>
-            <div class="mt-2 text-sm">
-              ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> (โหมดตัวหนังสือจริง) ระบบจะฝังฟอนต์ไทยและแนบรายการไฟล์ใบเสร็จไว้ท้ายเล่ม
-            </div>
-          </details>
-
-          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
-            <summary class="cursor-pointer font-medium">ดูไฟล์ใบเสร็จที่อัปโหลดแล้วได้ที่ไหน</summary>
-            <div class="mt-2 text-sm">
-              ไปที่หน้า “คำนวณภาษี” จะเห็นคอลัมน์ “ไฟล์” พร้อมลิงก์ไปยังไฟล์ใน Google Drive หรือกด “เปิดโฟลเดอร์ Drive”
-            </div>
-          </details>
-
-          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
-            <summary class="cursor-pointer font-medium">ระบบขึ้น “กำลังโหลด” ค้างไว้</summary>
-            <div class="mt-2 text-sm">
-              ให้รีเฟรชหน้า หรือปิดเบราว์เซอร์แล้วเปิดใหม่ หากยังไม่หายตรวจสอบอินเทอร์เน็ตหรือรอสักครู่
-            </div>
-          </details>
-        </section>
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">6) เคล็ดลับ & ความปลอดภัย</h4>
-          <ul class="list-disc ml-5 space-y-1">
-            <li>ตั้งชื่อไฟล์ใบเสร็จให้สื่อความหมาย เช่น <code>2025-03-10_kerry_350บาท.pdf</code></li>
-            <li>ลงชื่อเข้าใช้เฉพาะอุปกรณ์ที่เชื่อถือ และกด “ออกจากระบบ” เมื่อเลิกใช้งาน</li>
-            <li>สำรองไฟล์ CSV/PDF ไว้เป็นระยะ เผื่อกรณีฉุกเฉิน</li>
-          </ul>
-        </section>
-
-        <section>
-          <h4 class="text-xl font-semibold text-blue-600 mb-2">7) ติดต่อผู้ดูแลระบบ</h4>
-          <p>อีเมลติดต่อ: <a href="mailto:support@example.com" class="text-blue-600 hover:underline">support@example.com</a></p>
-        </section>
-
-      </div>
+<!-- ✨ Guide -->
+<section id="guideSection" class="hidden fade-in px-4">
+  <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+    <div class="flex items-center justify-between gap-3">
+      <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
+      <!-- ✅ ลิงก์ไป Google Drive -->
+      <a
+        id="downloadGuidePdfBtn"
+        href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
+        target="_blank" rel="noopener"
+        class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
+      >
+        ดาวน์โหลดคู่มือ
+      </a>
     </div>
-  </section>
+
+    <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
+
+    <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
+
+      <!-- 1 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
+        <ul class="list-disc ml-5 space-y-1">
+          <li><b>บันทึกรายการ</b> รายได้/รายจ่าย/ลดหย่อน พร้อมแนบใบเสร็จขึ้น Google Drive ส่วนตัวของคุณ</li>
+          <li><b>คำนวณภาษี</b> รวมทุกบันทึก เลือกวิธีคิดรายจ่าย (ตามจริง/เหมาจ่าย) และตัดรายการซ้ำ</li>
+          <li><b>โปรไฟล์</b> จัดการข้อมูลส่วนตัว (ชื่อ-ที่อยู่-โทรศัพท์)</li>
+          <li><b>ส่งออก</b> ประวัติเป็น CSV หรือสรุปเป็น PDF สำหรับแนบยื่นภาษี</li>
+        </ul>
+      </section>
+
+      <!-- 2 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">2) ก่อนเริ่มใช้งาน</h4>
+        <ol class="list-decimal ml-5 space-y-2">
+          <li>เปิดเว็บด้วย Chrome หรือ Edge เวอร์ชันล่าสุด เพื่อประสิทธิภาพสูงสุด</li>
+          <li>สมัคร/เข้าสู่ระบบ ด้วยอีเมล + รหัสผ่าน หรือบัญชี Google</li>
+          <li>เชื่อมต่อ Google Drive โดยกดปุ่ม <b>“เชื่อมต่อ Google Drive”</b> ที่มุมขวาบน</li>
+        </ol>
+      </section>
+
+      <!-- 3 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">3) การใช้งานพื้นฐาน</h4>
+
+        <div class="space-y-4">
+          <div>
+            <p class="font-medium">3.1 เข้าสู่ระบบ/สมัครสมาชิก</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่หน้า <b>เข้าสู่ระบบ</b> เลือกแท็บ “เข้าสู่ระบบ” หรือ “สมัครสมาชิก”</li>
+              <li>กด <b>เข้าสู่ระบบด้วย Google</b> เพื่อความสะดวก</li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.2 จัดการโปรไฟล์</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่เมนู <b>โปรไฟล์</b> แก้ไขชื่อ-ที่อยู่-เบอร์โทร แล้วกด <b>บันทึกโปรไฟล์</b></li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.3 บันทึกรายการ</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่ <b>บันทึกรายการ</b> กรอก รายได้ / รายจ่าย / ลดหย่อน</li>
+              <li>แนบไฟล์ใบเสร็จ (JPG, PNG, PDF) ได้หลายไฟล์ ระบบจะอัปโหลดไปยังโฟลเดอร์ <b>TaxOnline Receipts</b> ใน Google Drive ของคุณ</li>
+              <li>กด <b>บันทึกรายการ</b></li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.4 คำนวณภาษี</p>
+            <ul class="list-disc ml-5">
+              <li>ไปที่ <b>คำนวณภาษี</b> แล้วกดปุ่ม <b>รีเฟรช</b> เพื่อโหลดข้อมูลล่าสุด</li>
+              <li>เลือกวิธีคิดรายจ่าย <b>“ตามจริง”</b> หรือ <b>“เหมาจ่าย”</b> (ตั้งค่าเปอร์เซ็นต์และเพดานได้)</li>
+              <li>ติ๊ก <b>“ตัดรายการที่ซ้ำ”</b> เพื่อป้องกันข้อมูลซ้ำ</li>
+            </ul>
+          </div>
+
+          <div>
+            <p class="font-medium">3.5 ส่งออก / ดาวน์โหลด</p>
+            <ul class="list-disc ml-5">
+              <li>กด <b>ดาวน์โหลด CSV</b> เพื่อได้ไฟล์ Excel รายละเอียดทั้งหมด</li>
+              <li>กด <b>ดาวน์โหลดสรุป PDF</b> เพื่อได้เอกสารสรุปภาษี (แนบใบเสร็จท้ายเล่ม)</li>
+              <li>กด <b>เปิดโฟลเดอร์ Drive</b> เพื่อเข้าไปดูใบเสร็จใน Google Drive</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">4) การคิดภาษีโดยประมาณ</h4>
+        <p>
+          ระบบจะคำนวณภาษีโดยประมาณจากสูตร <br/>
+          <b>ภาษี = รายได้ − รายจ่าย − ลดหย่อน</b> แล้วนำไปคิดตามชั้นภาษีแบบขั้นบันได
+        </p>
+        <p class="text-sm text-gray-600 mt-1">
+          *ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับกรมสรรพากรหรือที่ปรึกษาภาษีอีกครั้ง
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">กดเชื่อมต่อ Google Drive แล้วไม่ขึ้นว่าเชื่อมต่อ</summary>
+          <div class="mt-2 text-sm">
+            ตรวจสอบว่าอินเทอร์เน็ตปกติ และเบราว์เซอร์ไม่บล็อกป๊อปอัป ลองกดเชื่อมต่อใหม่ หรือรีเฟรชหน้าเว็บ
+          </div>
+        </details>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยนหรือหน้าเปล่า</summary>
+          <div class="mt-2 text-sm">
+            หากตัวอักษรเพี้ยน ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ระบบจะสร้าง PDF แบบตัวหนังสือจริงและแนบรูปใบเสร็จท้ายเล่ม
+          </div>
+        </details>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">ดูไฟล์ใบเสร็จที่อัปโหลดแล้วได้ที่ไหน</summary>
+          <div class="mt-2 text-sm">
+            ไปที่หน้า “คำนวณภาษี” จะเห็นคอลัมน์ “ไฟล์” พร้อมลิงก์ไปยังไฟล์ใน Google Drive
+            หรือกด “เปิดโฟลเดอร์ Drive” ที่มุมบน
+          </div>
+        </details>
+
+        <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+          <summary class="cursor-pointer font-medium">ระบบขึ้น “กำลังโหลด” ค้างไว้</summary>
+          <div class="mt-2 text-sm">
+            ให้รีเฟรชหน้า หรือปิดเบราว์เซอร์แล้วเปิดใหม่ หากยังไม่หายตรวจสอบอินเทอร์เน็ตหรือรอ 1-2 นาที
+          </div>
+        </details>
+      </section>
+
+      <!-- 6 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">6) เคล็ดลับ & ความปลอดภัย</h4>
+        <ul class="list-disc ml-5 space-y-1">
+          <li>ตั้งชื่อไฟล์ใบเสร็จให้สื่อความหมาย เช่น <code>2025-03-10_kerry_350บาท.pdf</code></li>
+          <li>ลงชื่อเข้าใช้เฉพาะอุปกรณ์ที่เชื่อถือ และกด “ออกจากระบบ” เมื่อเลิกใช้งาน</li>
+          <li>สำรองไฟล์ CSV/PDF ไว้เป็นระยะ เผื่อกรณีฉุกเฉิน</li>
+        </ul>
+      </section>
+
+      <!-- 7 -->
+      <section>
+        <h4 class="text-xl font-semibold text-blue-600 mb-2">7) ติดต่อผู้ดูแลระบบ</h4>
+        <p>
+          อีเมลติดต่อ: 
+          <a href="mailto:support@example.com" class="text-blue-600 hover:underline">
+            support@example.com
+          </a>
+        </p>
+      </section>
+
+    </div>
+  </div>
+</section>
 
   <!-- Diagnostics -->
   <section id="diagWrap" class="hidden fade-in px-4">
@@ -462,7 +468,7 @@ function showDiag(lines){
   const pre = document.getElementById('diag');
   if (wrap && pre){
     wrap.classList.remove('hidden');
-    pre.textContent = (Array.isArray(lines)?lines:[lines]).join('\\n');
+    pre.textContent = (Array.isArray(lines)?lines:[lines]).join('\n');
   }
 }
 
@@ -733,14 +739,14 @@ const MAX_FILE_SIZE_MB = 8;
 
 document.getElementById('receiptUpload').addEventListener('change', function(){
   const files = Array.from(this.files || []);
-  if (files.length > MAX_FILES) { alert(\`เลือกได้ไม่เกิน \${MAX_FILES} ไฟล์ต่อครั้ง\`); this.value=''; return; }
+  if (files.length > MAX_FILES) { alert(`เลือกได้ไม่เกิน ${MAX_FILES} ไฟล์ต่อครั้ง`); this.value=''; return; }
   for (const f of files) {
-    if (!ALLOW_TYPES.includes(f.type)) { alert(\`ไฟล์ \${f.name} ไม่รองรับ (JPG/PNG/PDF เท่านั้น)\`); this.value=''; return; }
-    if (f.size > MAX_FILE_SIZE_MB*1024*1024) { alert(\`ไฟล์ \${f.name} > \${MAX_FILE_SIZE_MB}MB\`); this.value=''; return; }
+    if (!ALLOW_TYPES.includes(f.type)) { alert(`ไฟล์ ${f.name} ไม่รองรับ (JPG/PNG/PDF เท่านั้น)`); this.value=''; return; }
+    if (f.size > MAX_FILE_SIZE_MB*1024*1024) { alert(`ไฟล์ ${f.name} > ${MAX_FILE_SIZE_MB}MB`); this.value=''; return; }
   }
   const info = document.getElementById('fileInfo');
   const preview = document.getElementById('previewArea');
-  if (info) info.textContent = \`คุณเลือก \${files.length} ไฟล์\`;
+  if (info) info.textContent = `คุณเลือก ${files.length} ไฟล์`;
   if (preview) {
     preview.innerHTML = '';
     files.forEach(f=>{
@@ -753,7 +759,7 @@ document.getElementById('receiptUpload').addEventListener('change', function(){
         };
         fr.readAsDataURL(f);
       } else {
-        const p = document.createElement('p'); p.textContent = \`📄 \${f.name}\`; p.className='text-xs text-gray-700';
+        const p = document.createElement('p'); p.textContent = `📄 ${f.name}`; p.className='text-xs text-gray-700';
         preview.appendChild(p);
       }
     });
@@ -838,11 +844,11 @@ recordForm.addEventListener('submit', async (e)=>{
     document.getElementById('fileInfo').textContent='';
     document.getElementById('previewArea').innerHTML='';
 
-    saveMsg.textContent = uploaded.length ? \`บันทึกรายการแล้ว และอัปโหลดไป Google Drive (\${uploaded.length} ไฟล์)\` : 'บันทึกรายการสำเร็จ';
+    saveMsg.textContent = uploaded.length ? `บันทึกรายการแล้ว และอัปโหลดไป Google Drive (${uploaded.length} ไฟล์)` : 'บันทึกรายการสำเร็จ';
     saveMsg.className = 'text-green-600 text-sm mt-3';
   } catch(e){
     console.error(e);
-    saveMsg.textContent = \`บันทึก/อัปโหลดล้มเหลว: \${e.message||''}\`;
+    saveMsg.textContent = `บันทึก/อัปโหลดล้มเหลว: ${e.message||''}`;
     saveMsg.className = 'text-red-600 text-sm mt-3';
   }
 });
@@ -911,7 +917,7 @@ async function loadHistory(){
     const rowsUse = maybeDedupe(rows);
 
     if (!rowsUse.length){
-      historyBody.innerHTML = '<tr><td colspan="7" class="px-3 py-3 text-center text-gray-500">ยังไม่มีรายการ</td></tr>';
+      historyBody.innerHTML = `<tr><td colspan="7" class="px-3 py-3 text-center text-gray-500">ยังไม่มีรายการ</td></tr>`;
       renderSummary([]);
       return;
     }
@@ -980,23 +986,23 @@ async function exportHistoryCSV() {
     const rows = await fetchAllCalculations();
     const cfg = getExpenseConfigFromUI();
     const rowsUse = maybeDedupe(rows);
-    const meta = cfg.method==='lumpsum' ? \`วิธีรายจ่าย = เหมาจ่าย (\${cfg.percent||0}%\${cfg.cap?\` เพดาน \${cfg.cap}\`:''})\` : 'วิธีรายจ่าย = ตามจริง';
+    const meta = cfg.method==='lumpsum' ? `วิธีรายจ่าย = เหมาจ่าย (${cfg.percent||0}%${cfg.cap?` เพดาน ${cfg.cap}`:''})` : 'วิธีรายจ่าย = ตามจริง';
     const header = ['วันที่','รายได้','รายจ่ายใช้คำนวณ','ลดหย่อน','สุทธิ(ต่อรายการ)','ไฟล์ใบเสร็จ(ลิงก์)'];
-    const lines = [\`"\${meta}"\`, header.join(',')];
+    const lines = [`"${meta}"`, header.join(',')];
     rowsUse.forEach(r => {
       const expUsed = computeExpenseUsed(r, cfg);
       const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
       const links = r.receipts.map((x,i) => x.webViewLink||'').join(' | ');
       lines.push([
-        \`"\${r.date||''}"\`,
+        `"${r.date||''}"`,
         r.income||0,
         expUsed,
         r.deduction||0,
         net,
-        \`"\${links}"\`
+        `"${links}"`
       ].join(','));
     });
-    const csv = '\\ufeff' + lines.join('\\n');
+    const csv = '\ufeff' + lines.join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1043,10 +1049,12 @@ async function ensureThaiFont() {
   catch (e) { throw new Error('ลงทะเบียนฟอนต์ไทยไม่สำเร็จ: ' + e.message); }
 }
 
-/* ====== ดึงไฟล์จาก Drive เป็น DataURL ====== */
+/* ========= NEW: ดาวน์โหลดสรุป PDF แบบ “ตัวหนังสือจริง + แนบรูปใบเสร็จ” ========= */
+
+/** ดาวน์โหลดเนื้อไฟล์จาก Drive เป็น DataURL (เฉพาะไฟล์ที่แอปอัปขึ้นเองตาม scope drive.file) */
 async function driveFileToDataURL(fileId){
   await ensureDriveToken();
-  const res = await fetch(\`https://www.googleapis.com/drive/v3/files/\${fileId}?alt=media\`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
     headers: { 'Authorization': 'Bearer ' + driveAccessToken }
   });
   if (!res.ok) throw new Error('ดาวน์โหลดไฟล์จาก Drive ไม่สำเร็จ');
@@ -1059,7 +1067,7 @@ async function driveFileToDataURL(fileId){
   });
 }
 
-/* ====== โปรไฟล์สำหรับหัวรายงาน ====== */
+/** ดึงโปรไฟล์ผู้ใช้ (ชื่อ-อีเมล-ที่อยู่) เพื่อพิมพ์บนหัวรายงาน */
 async function getUserProfileForReport(){
   if (!auth || !auth.currentUser) return {};
   try {
@@ -1069,18 +1077,18 @@ async function getUserProfileForReport(){
   return {};
 }
 
-/* ====== ดาวน์โหลดสรุป PDF (Text Mode + ฝังฟอนต์ไทย + แนบภาพ/ลิงก์ใบเสร็จ) ====== */
 async function exportHistoryPDF_TextMode(){
   try {
     const { jsPDF } = window.jspdf || {};
     if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
     if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
 
+    // โหลดข้อมูลให้ล่าสุด
     const rows = await fetchAllCalculations();
     const cfg = getExpenseConfigFromUI();
     const rowsUse = maybeDedupe(rows);
 
-    // totals
+    // รวม totals
     let sumIncome=0, sumExpense=0, sumDeduct=0, sumNet=0;
     rowsUse.forEach(r=>{
       const inc = Number(r.income||0);
@@ -1090,43 +1098,46 @@ async function exportHistoryPDF_TextMode(){
     });
     const approxTax = thaiProgressiveTax(sumNet);
 
-    // font
+    // โหลดฟอนต์ไทย
     await ensureThaiFont();
 
+    // เตรียมเอกสาร
     const pdf = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
     const FONT_NAME = 'NotoSansThai';
     pdf.setFont(FONT_NAME); pdf.setFontSize(14);
 
+    // โปรไฟล์ผู้ใช้
     const profile = await getUserProfileForReport();
     const now = new Date();
     const topMeta = [
-      \`ผู้ยื่น: \${(profile.firstName||'') + ' ' + (profile.lastName||'')}\`.trim(),
-      \`อีเมล: \${profile.email || (auth.currentUser && auth.currentUser.email) || '-'}\`,
-      profile.address ? \`ที่อยู่: \${profile.address}\` : ''
+      `ผู้ยื่น: ${(profile.firstName||'') + ' ' + (profile.lastName||'')}`.trim(),
+      `อีเมล: ${profile.email || (auth.currentUser && auth.currentUser.email) || '-'}`,
+      profile.address ? `ที่อยู่: ${profile.address}` : ''
     ].filter(Boolean).join('   |   ');
 
+    // หัวเรื่อง
     pdf.text('สรุปรายงานคำนวณภาษี (สำหรับแนบยื่น)', 105, 16, { align:'center' });
     pdf.setFontSize(10);
     pdf.text(topMeta, 14, 24);
-    pdf.text(\`วันที่ออกเอกสาร: \${now.toLocaleString('th-TH')}\`, 14, 30);
+    pdf.text(`วันที่ออกเอกสาร: ${now.toLocaleString('th-TH')}`, 14, 30);
     const methodStr = cfg.method==='lumpsum'
-      ? \`วิธีรายจ่าย: เหมาจ่าย \${cfg.percent||0}%\${cfg.cap?\` (เพดาน \${Number(cfg.cap).toLocaleString('th-TH')} บาท)\`:''}\`
-      : \`วิธีรายจ่าย: ตามจริง\`;
+      ? `วิธีรายจ่าย: เหมาจ่าย ${cfg.percent||0}%${cfg.cap?` (เพดาน ${Number(cfg.cap).toLocaleString('th-TH')} บาท)`:''}`
+      : `วิธีรายจ่าย: ตามจริง`;
     pdf.text(methodStr, 14, 35);
 
-    // summary
+    // สรุปตัวเลขรวม
     pdf.setFontSize(11);
     const summaryLines = [
-      \`รายได้รวม: \${sumIncome.toLocaleString('th-TH')} บาท\`,
-      \`รายจ่ายรวม (ตามวิธีที่เลือก): \${sumExpense.toLocaleString('th-TH')} บาท\`,
-      \`ลดหย่อนรวม: \${sumDeduct.toLocaleString('th-TH')} บาท\`,
-      \`ฐานภาษีประมาณ: \${sumNet.toLocaleString('th-TH')} บาท\`,
-      \`ภาษีที่ต้องชำระโดยประมาณ: \${approxTax.toLocaleString('th-TH')} บาท\`
+      `รายได้รวม: ${sumIncome.toLocaleString('th-TH')} บาท`,
+      `รายจ่ายรวม (ตามวิธีที่เลือก): ${sumExpense.toLocaleString('th-TH')} บาท`,
+      `ลดหย่อนรวม: ${sumDeduct.toLocaleString('th-TH')} บาท`,
+      `ฐานภาษีประมาณ: ${sumNet.toLocaleString('th-TH')} บาท`,
+      `ภาษีที่ต้องชำระโดยประมาณ: ${approxTax.toLocaleString('th-TH')} บาท`
     ];
     let y = 42;
     summaryLines.forEach(line => { pdf.text(line, 14, y); y += 6; });
 
-    // table
+    // ตารางรายละเอียด (autoTable)
     const tableBody = rowsUse.map(r=>{
       const expUsed = computeExpenseUsed(r, cfg);
       const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
@@ -1137,7 +1148,7 @@ async function exportHistoryPDF_TextMode(){
         expUsed.toLocaleString('th-TH'),
         (r.deduction||0).toLocaleString('th-TH'),
         net.toLocaleString('th-TH'),
-        fileCount ? \`\${fileCount} ไฟล์\` : '—'
+        fileCount ? `${fileCount} ไฟล์` : '—'
       ];
     });
 
@@ -1151,36 +1162,49 @@ async function exportHistoryPDF_TextMode(){
     });
 
     // แนบภาพใบเสร็จ (เฉพาะ image/*)
-    const MAX_RECEIPT_IMAGES = 30;
+    const afterTableY = pdf.lastAutoTable ? (pdf.lastAutoTable.finalY + 8) : (pdf.previousAutoTable && pdf.previousAutoTable.finalY + 8) || (y+8);
+    pdf.setFontSize(12);
+    if (rowsUse.some(r => (r.receipts||[]).some(x => (x.mimeType||'').startsWith('image/'))) ) {
+      if (afterTableY > 260) pdf.addPage();
+      pdf.text('แนบหลักฐานใบเสร็จ (ภาพจากไฟล์ที่อัปโหลด)', 14, (pdf.lastAutoTable ? pdf.lastAutoTable.finalY + 8 : 20));
+    }
+
+    const MAX_RECEIPT_IMAGES = 30; // กันไฟล์ใหญ่เกินไป
     let added = 0;
+
     for (const r of rowsUse){
       for (const rec of (r.receipts || [])){
         if (!rec.mimeType || !rec.mimeType.startsWith('image/')) continue;
         if (added >= MAX_RECEIPT_IMAGES) break;
 
+        // ดาวน์โหลดภาพจาก Drive → DataURL
         let dataURL;
         try {
           dataURL = await driveFileToDataURL(rec.driveFileId);
         } catch (e) {
+          // ข้ามรูปที่ดาวน์โหลดไม่ได้
           continue;
         }
 
+        // จัดวางภาพบนหน้า A4
         const margin = 12;
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
         const usableW = pageW - margin*2;
-        const maxH = pageH - margin*2 - 8;
+        const maxH = pageH - margin*2 - 8; // ช่องว่างหัวท้าย
 
+        // สร้างรูปชั่วคราวเพื่ออ่านอัตราส่วน
         const img = new Image();
-        await new Promise((resolve)=>{ img.onload=resolve; img.src=dataURL; });
+        const imgLoaded = await new Promise((resolve)=>{ img.onload=resolve; img.src=dataURL; });
         const ratio = img.width / img.height;
         let renderW = usableW;
         let renderH = renderW / ratio;
         if (renderH > maxH) { renderH = maxH; renderW = renderH * ratio; }
 
+        // ขึ้นหน้าใหม่เสมอเพื่อความสะอาด
         pdf.addPage();
         pdf.setFontSize(10);
-        pdf.text(\`\${r.date || ''} — \${rec.name || 'ใบเสร็จ'}\`, margin, margin - 2);
+        pdf.text(`${r.date || ''} — ${rec.name || 'ใบเสร็จ'}`, margin, margin - 2);
         pdf.addImage(dataURL, (rec.mimeType.includes('png')?'PNG':'JPEG'), (pageW - renderW)/2, margin, renderW, renderH, undefined, 'FAST');
 
         added++;
@@ -1189,7 +1213,7 @@ async function exportHistoryPDF_TextMode(){
       if (added >= MAX_RECEIPT_IMAGES) break;
     }
 
-    // รายชื่อไฟล์ใบเสร็จที่เป็น PDF (แสดงลิงก์)
+    // ถ้ามีไฟล์ใบเสร็จเป็น PDF ให้พิมพ์รายชื่อ + ลิงก์ไว้ท้ายเล่ม
     const pdfReceipts = [];
     rowsUse.forEach(r=>{
       (r.receipts||[]).forEach(x=>{
@@ -1203,8 +1227,9 @@ async function exportHistoryPDF_TextMode(){
       pdf.setFontSize(10);
       let yy = 24;
       pdfReceipts.forEach((f,idx)=>{
-        const line = \`\${idx+1}. \${f.name || 'ใบเสร็จ'}\`;
+        const line = `${idx+1}. ${f.name || 'ใบเสร็จ'}`;
         pdf.text(line, 14, yy);
+        // วางลิงก์ (annotation)
         if (f.webViewLink) {
           const textW = pdf.getTextWidth(line);
           pdf.link(14, yy-3, textW, 6, { url: f.webViewLink });
@@ -1221,8 +1246,9 @@ async function exportHistoryPDF_TextMode(){
   }
 }
 
-/* ========= ปุ่มส่งออก/ลิงก์ ========= */
+/* ========= ปุ่มส่งออก ========= */
 document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
+// ⬇️ เปลี่ยนให้ปุ่มใช้ TextMode (ไม่แคปหน้าจอ)
 document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_TextMode);
 document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
 
@@ -1267,7 +1293,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       auth.createUserWithEmailAndPassword(email, password)
         .then(cred=>{
           const user=cred.user;
-          return user.updateProfile({ displayName: \`\${firstName} \${lastName}\` })
+          return user.updateProfile({ displayName: `${firstName} ${lastName}` })
             .then(()=> db.collection('users').doc(user.uid).set({
               uid:user.uid, firstName, lastName, email, phone:'', address:'', createdAt: firebase.firestore.FieldValue.serverTimestamp()
             }, {merge:true}));
@@ -1304,7 +1330,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     auth.onAuthStateChanged((user)=>{
       if (user) {
         userGreeting.classList.remove('hidden');
-        userGreeting.textContent = \`สวัสดี, \${user.displayName || user.email}\`;
+        userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`;
         loginNav.classList.add('hidden');
         logoutBtn.classList.remove('hidden');
       } else {
@@ -1326,7 +1352,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       ['GIS (google.accounts)', !!(window.google && google.accounts)],
       ['html2canvas', !!window.html2canvas]
     ];
-    checks.forEach(([k,v])=> diag.push(\`\${v?'[OK]':'[X]'} \${k}\`));
+    checks.forEach(([k,v])=> diag.push(`${v?'[OK]':'[X]'} ${k}`));
     showDiag(diag);
   }catch(err){
     console.error(err);
@@ -1335,7 +1361,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
   }
 })();
 
-/* ====== ปุ่มเปิดโฟลเดอร์ Drive ====== */
+/* ====== Utilities ที่ใช้ร่วมกับปุ่มโฟลเดอร์ ====== */
 async function openDriveFolder() {
   try {
     const { webViewLink } = await getOrCreateDriveFolder();
