@@ -290,9 +290,15 @@
     <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
-        <button id="downloadGuidePdfBtn" class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm">
-          ดาวน์โหลดคู่มือ PDF
-        </button>
+        <!-- ✅ เปลี่ยนเป็นลิงก์ไป Google Drive -->
+        <a
+          id="downloadGuidePdfBtn"
+          href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
+          target="_blank" rel="noopener"
+          class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
+        >
+          ดาวน์โหลดคู่มือ (Drive)
+        </a>
       </div>
 
       <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
@@ -381,7 +387,7 @@
           <details class="mb-2 p-3 bg-gray-50 rounded-lg">
             <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยน/หน้าเปล่า</summary>
             <div class="mt-2 text-sm">
-              ระบบมีโหมดสร้าง PDF แบบแคปเจอร์หน้า (html2canvas) ซึ่งแก้ปัญหาฟอนต์/เว้นบรรทัดผิด ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ในหน้า “คำนวณภาษี” หรือปุ่มบนหน้านี้
+              ระบบมีโหมดสร้าง PDF แบบแคปเจอร์หน้า (html2canvas) ซึ่งแก้ปัญหาฟอนต์/เว้นบรรทัดผิด ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ในหน้า “คำนวณภาษี”
             </div>
           </details>
 
@@ -1118,109 +1124,6 @@ async function exportHistoryPDF_Fallback() {
   }
 }
 
-/* --- ✨ PDF ของคู่มือ (แคปเจอร์หน้า guide) — ปรับใหม่ให้กันหน้าเปล่า/ฟอนต์หาย --- */
-async function exportGuidePDF() {
-  try {
-    const { jsPDF } = window.jspdf || {};
-    if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
-    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
-
-    const src = document.getElementById('guideSection');
-    if (!src) { alert('ไม่พบหน้าคู่มือ'); return; }
-
-    // host สำหรับโคลน (ซ่อนนอกจอ)
-    let host = document.getElementById('print-clone-host');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'print-clone-host';
-      document.body.appendChild(host);
-    }
-    host.innerHTML = '';
-    host.style.position = 'fixed';
-    host.style.left = '-10000px';
-    host.style.top = '0';
-    host.style.width = '1000px';
-    host.style.background = '#ffffff';
-    host.style.zIndex = '-1';
-    host.style.pointerEvents = 'none';
-
-    const clone = src.cloneNode(true);
-    clone.classList.remove('hidden');
-    clone.style.display = 'block';
-    clone.style.width = '1000px';
-    clone.style.background = '#ffffff';
-
-    // เปิด details ทั้งหมด เพื่อให้เนื้อหาแสดงครบก่อนแคปเจอร์
-    clone.querySelectorAll('details').forEach(d => d.open = true);
-
-    host.appendChild(clone);
-
-    // รอฟอนต์และเลย์เอาต์
-    if (document.fonts && document.fonts.ready) {
-      try { await document.fonts.ready; } catch (_) {}
-    }
-    await new Promise(r => setTimeout(r, 400));
-
-    const scale = 2;
-    const canvas = await html2canvas(clone, {
-      backgroundColor: '#ffffff',
-      scale,
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-      windowWidth: clone.scrollWidth,
-      windowHeight: clone.scrollHeight,
-      foreignObjectRendering: false
-    });
-
-    if (!canvas || !canvas.width || !canvas.height) {
-      throw new Error('แคปเจอร์ไม่สำเร็จ (canvas ว่าง)');
-    }
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-
-    const imgPxW = canvas.width;
-    const imgPxH = canvas.height;
-    const ratio  = imgPxW / imgPxH;
-    const renderW = pageW;
-    const renderH = renderW / ratio;
-
-    if (renderH <= pageH) {
-      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
-    } else {
-      const pxPerMm = imgPxW / renderW;
-      const pagePxH = pageH * pxPerMm;
-      let sY = 0, page = 0;
-
-      while (sY < imgPxH) {
-        const sliceH = Math.min(pagePxH, imgPxH - sY);
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width  = imgPxW;
-        pageCanvas.height = sliceH;
-        const ctx = pageCanvas.getContext('2d');
-        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
-
-        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
-        if (page > 0) pdf.addPage();
-        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
-
-        sY += sliceH;
-        page += 1;
-      }
-    }
-
-    pdf.save('TaxOnline_User_Guide.pdf');
-    host.innerHTML = '';
-  } catch (e) {
-    console.error(e);
-    alert('สร้าง PDF ไม่สำเร็จ: ' + (e.message || e));
-  }
-}
-
 async function openDriveFolder() {
   try {
     const { webViewLink } = await getOrCreateDriveFolder();
@@ -1233,8 +1136,8 @@ document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHisto
 /* เปลี่ยนให้กดดาวน์โหลด PDF ใช้ fallback ใหม่นี้ */
 document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Fallback);
 document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
-/* ✨ ผูกปุ่มดาวน์โหลดคู่มือ */
-document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', exportGuidePDF);
+/* ❌ ลบการ bind ปุ่มคู่มือ (ใช้ลิงก์ <a> เปิด Drive แล้ว) */
+/* document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', exportGuidePDF); */
 
 /* ========= BOOT ========= */
 (async function boot(){
