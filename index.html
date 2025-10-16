@@ -59,6 +59,8 @@
       <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">บันทึกรายการ</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="history">คำนวณภาษี</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="profile">โปรไฟล์</button>
+      <!-- ✨ เพิ่มปุ่มเมนูคู่มือ -->
+      <button class="nav-link text-gray-700 hover:underline" data-nav="guide">คู่มือใช้งาน</button>
       <button id="loginNav" class="nav-link text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
       <button id="logoutBtn" class="nav-link text-red-600 hover:underline hidden">ออกจากระบบ</button>
     </nav>
@@ -85,6 +87,8 @@
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
       <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มบันทึกรายการ</button>
       <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
+      <!-- (ทางเลือก) ปุ่มลัดไปคู่มือ -->
+      <button class="bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-full text-lg shadow transition border" data-nav="guide">อ่านคู่มือ</button>
     </div>
   </section>
 
@@ -272,6 +276,135 @@
         </table>
       </div>
       <p id="historyMsg" class="text-sm mt-3"></p>
+    </div>
+  </section>
+
+  <!-- ✨ Guide -->
+  <section id="guideSection" class="hidden fade-in px-4">
+    <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
+        <button id="downloadGuidePdfBtn" class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm">
+          ดาวน์โหลดคู่มือ PDF
+        </button>
+      </div>
+
+      <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
+
+      <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
+          <ul class="list-disc ml-5 space-y-1">
+            <li><b>บันทึกรายการ</b> รายได้/รายจ่าย/ลดหย่อน พร้อมแนบใบเสร็จขึ้น Google Drive ส่วนตัวของคุณ</li>
+            <li><b>คำนวณภาษี</b> รวมทุกบันทึก เลือกวิธีคิดรายจ่าย (ตามจริง/เหมาจ่าย) และตัดรายการซ้ำ</li>
+            <li><b>โปรไฟล์</b> จัดการข้อมูลส่วนตัว (ชื่อ-ที่อยู่-โทรศัพท์)</li>
+            <li><b>ส่งออก</b> ประวัติเป็น CSV หรือสรุปเป็น PDF</li>
+          </ul>
+        </section>
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">2) ก่อนเริ่มใช้งาน</h4>
+          <ol class="list-decimal ml-5 space-y-2">
+            <li>เปิดเว็บด้วย Chrome/Edge เวอร์ชันล่าสุด เพื่อประสิทธิภาพสูงสุด</li>
+            <li>สมัคร/เข้าสู่ระบบ (อีเมล+รหัสผ่าน หรือ Google)</li>
+            <li>เชื่อมต่อ Google Drive โดยกดปุ่ม <b>“เชื่อมต่อ Google Drive”</b> ที่มุมขวาบน</li>
+            <li>ถ้าต้องอัปโหลดรูปขึ้น <b>Firebase Storage</b> ด้วย ให้ตั้งค่า <code>storageBucket</code> ใน <code>firebaseConfig</code> และเปิดใช้งาน Storage Rules ให้เหมาะสม</li>
+          </ol>
+        </section>
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">3) การใช้งานพื้นฐาน</h4>
+          <div class="space-y-3">
+            <div>
+              <p class="font-medium">3.1 เข้าสู่ระบบ/สมัครสมาชิก</p>
+              <ul class="list-disc ml-5">
+                <li>หน้า <b>เข้าสู่ระบบ</b> เลือกแท็บ “เข้าสู่ระบบ” หรือ “สมัครสมาชิก”</li>
+                <li>กด <b>“เข้าสู่ระบบด้วย Google”</b> ได้หากต้องการความสะดวก</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium">3.2 จัดการโปรไฟล์</p>
+              <ul class="list-disc ml-5">
+                <li>ไปที่เมนู <b>โปรไฟล์</b> แก้ไขชื่อ-ที่อยู่-โทรศัพท์ แล้วกด <b>บันทึกโปรไฟล์</b></li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium">3.3 บันทึกรายการ</p>
+              <ul class="list-disc ml-5">
+                <li>ไปที่ <b>บันทึกรายการ</b> กรอก “รายได้”, “รายจ่ายตามจริง”, “ค่าลดหย่อน”</li>
+                <li>แนบไฟล์ใบเสร็จ (JPG/PNG/PDF) ได้หลายไฟล์ ระบบจะอัปโหลดไปยัง Google Drive โฟลเดอร์ <b>TaxOnline Receipts</b> อัตโนมัติ</li>
+                <li>กด <b>บันทึกรายการ</b> เพื่อบันทึกลง Firestore</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium">3.4 คำนวณภาษี</p>
+              <ul class="list-disc ml-5">
+                <li>ไปที่ <b>คำนวณภาษี</b> กด <b>รีเฟรช</b> เพื่อโหลดประวัติล่าสุด</li>
+                <li>เลือก <b>วิธีรายจ่ายรวม</b>: “ตามจริง” หรือ “เหมาจ่าย” (ตั้งค่า % และเพดานได้)</li>
+                <li>ติ๊ก <b>“ตัดรายการที่ซ้ำ”</b> เพื่อลดรายการที่ลงซ้ำกัน (พิจารณาจากวันที่/ตัวเลข)</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium">3.5 ส่งออก & จัดเก็บ</p>
+              <ul class="list-disc ml-5">
+                <li>กด <b>ดาวน์โหลด CSV</b> เพื่อส่งออกประวัติละเอียด</li>
+                <li>กด <b>ดาวน์โหลดสรุป PDF</b> เพื่อเก็บรายงานสรุปแบบหน้าเดียว/หลายหน้า</li>
+                <li>กด <b>เปิดโฟลเดอร์ Drive</b> เพื่อเข้าไปดูไฟล์ใบเสร็จใน Google Drive</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">4) การคิดภาษี (คร่าว ๆ)</h4>
+          <p>ระบบคำนวณ <b>ภาษีโดยประมาณ</b> จาก “รายได้ − รายจ่ายใช้คำนวณ − ลดหย่อน” แล้วนำไปเข้าชั้นภาษีแบบขั้นบันได</p>
+          <p class="text-sm text-gray-600 mt-1">*ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับที่ปรึกษาภาษีหรือกรมสรรพากรอีกครั้ง</p>
+        </section>
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
+          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+            <summary class="cursor-pointer font-medium">อัปโหลดล้มเหลว: “Firebase Storage: No default bucket found …”</summary>
+            <div class="mt-2 text-sm">
+              ต้องเพิ่ม <code>storageBucket</code> ใน <code>firebaseConfig</code> และโหลด <code>firebase-storage.js</code> รวมทั้งเปิดใช้ Storage ใน Firebase Console
+            </div>
+          </details>
+          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+            <summary class="cursor-pointer font-medium">กดเชื่อมต่อ Google Drive แล้วไม่ขึ้นว่าเชื่อมต่อ</summary>
+            <div class="mt-2 text-sm">
+              ตรวจว่าอินเทอร์เน็ตปกติ และเบราเซอร์ไม่บล็อกป๊อปอัป ลองกดเชื่อมต่อใหม่ หรือรีเฟรชหน้าเว็บ
+            </div>
+          </details>
+          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+            <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยน/หน้าเปล่า</summary>
+            <div class="mt-2 text-sm">
+              ระบบมีโหมดสร้าง PDF แบบแคปเจอร์หน้า (html2canvas) ซึ่งแก้ปัญหาฟอนต์/เว้นบรรทัดผิด ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ในหน้า “คำนวณภาษี” หรือปุ่มบนหน้านี้
+            </div>
+          </details>
+          <details class="mb-2 p-3 bg-gray-50 rounded-lg">
+            <summary class="cursor-pointer font-medium">ดูไฟล์ใบเสร็จที่อัปโหลดไปแล้วตรงไหน</summary>
+            <div class="mt-2 text-sm">
+              ที่หน้า “คำนวณภาษี” จะมีคอลัมน์ “ไฟล์” พร้อมลิงก์ไปยังไฟล์บน Google Drive หรือกดปุ่ม “เปิดโฟลเดอร์ Drive”
+            </div>
+          </details>
+        </section>
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">6) เคล็ดลับ & ความปลอดภัย</h4>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>ตั้งชื่อไฟล์ใบเสร็จให้สื่อความหมาย เช่น <code>2025-03-10_ขนส่ง_kerry_350บาท.pdf</code></li>
+            <li>ลงชื่อเข้าใช้เฉพาะอุปกรณ์ที่เชื่อถือ และกด “ออกจากระบบ” เมื่อใช้งานเสร็จ</li>
+            <li>สำรอง CSV/PDF เป็นระยะ ๆ เผื่อกรณีฉุกเฉิน</li>
+          </ul>
+        </section>
+
+        <section>
+          <h4 class="text-xl font-semibold text-blue-600 mb-2">7) ติดต่อผู้ดูแลระบบ</h4>
+          <p>อีเมล: <a href="mailto:support@example.com" class="text-blue-600 hover:underline">support@example.com</a> (แก้เป็นของคุณ)</p>
+        </section>
+
+      </div>
     </div>
   </section>
 
@@ -465,6 +598,7 @@ const sections = {
   profile: document.getElementById('profileSection'),
   calculator: document.getElementById('calculatorSection'),
   history: document.getElementById('historySection'),
+  guide: document.getElementById('guideSection'), // ✨ เพิ่มคู่มือ
   diag: document.getElementById('diagWrap')
 };
 const userGreeting = document.getElementById('userGreeting');
@@ -981,6 +1115,88 @@ async function exportHistoryPDF_Fallback() {
   }
 }
 
+/* --- ✨ PDF ของคู่มือ (แคปเจอร์หน้า guide) --- */
+async function exportGuidePDF() {
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
+    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
+
+    const src = document.getElementById('guideSection');
+    if (!src) { alert('ไม่พบหน้าคู่มือ'); return; }
+
+    // host สำหรับโคลน (ซ่อนนอกจอ)
+    let host = document.getElementById('print-clone-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'print-clone-host';
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+
+    const clone = src.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.width = '1000px';
+    clone.style.background = '#ffffff';
+    host.appendChild(clone);
+
+    await new Promise(r => setTimeout(r, 200));
+
+    const scale = 2;
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+
+    const imgPxW = canvas.width;
+    const imgPxH = canvas.height;
+    const ratio  = imgPxW / imgPxH;
+    const renderW = pageW;
+    const renderH = renderW / ratio;
+
+    if (renderH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
+    } else {
+      const pxPerMm = imgPxW / renderW;
+      const pagePxH = pageH * pxPerMm;
+      let sY = 0, page = 0;
+
+      while (sY < imgPxH) {
+        const sliceH = Math.min(pagePxH, imgPxH - sY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = imgPxW;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
+
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
+
+        sY += sliceH;
+        page += 1;
+      }
+    }
+
+    pdf.save('TaxOnline_User_Guide.pdf');
+    host.innerHTML = '';
+  } catch (e) {
+    console.error(e);
+    alert(e.message || e);
+  }
+}
+
 async function openDriveFolder() {
   try {
     const { webViewLink } = await getOrCreateDriveFolder();
@@ -993,6 +1209,8 @@ document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHisto
 /* เปลี่ยนให้กดดาวน์โหลด PDF ใช้ fallback ใหม่นี้ */
 document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Fallback);
 document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
+/* ✨ ผูกปุ่มดาวน์โหลดคู่มือ */
+document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', exportGuidePDF);
 
 /* ========= BOOT ========= */
 (async function boot(){
@@ -1006,6 +1224,7 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
       authDomain: "tax-online-6afdd.firebaseapp.com",
       projectId: "tax-online-6afdd",
       appId: "1:959276043439:web:f358ce055687efea5d185a"
+      // ถ้ามี Firebase Storage ให้เพิ่ม: storageBucket: "your-bucket.appspot.com"
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
