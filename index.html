@@ -37,6 +37,12 @@
 
   /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า (เพิ่มใหม่) */
   #print-clone-host{ position: fixed; left: -10000px; top: 0; width: 1000px; background: #fff; }
+
+  /* ---- Print safety: ลดปัญหาเวลาแคปเจอร์เป็น PDF ---- */
+  @media print {
+    body { animation: none !important; }
+    #splash, header, footer, .fixed { display: none !important; }
+  }
 </style>
 </head>
 <body class="font-sans">
@@ -361,21 +367,24 @@
           <p class="text-sm text-gray-600 mt-1">*ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับที่ปรึกษาภาษีหรือกรมสรรพากรอีกครั้ง</p>
         </section>
 
+        <!-- ✅ แก้โครงสร้าง FAQ (ลบ </details> เกิน) -->
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
-          </details>
+
           <details class="mb-2 p-3 bg-gray-50 rounded-lg">
             <summary class="cursor-pointer font-medium">กดเชื่อมต่อ Google Drive แล้วไม่ขึ้นว่าเชื่อมต่อ</summary>
             <div class="mt-2 text-sm">
               ตรวจว่าอินเทอร์เน็ตปกติ และเบราเซอร์ไม่บล็อกป๊อปอัป ลองกดเชื่อมต่อใหม่ หรือรีเฟรชหน้าเว็บ
             </div>
           </details>
+
           <details class="mb-2 p-3 bg-gray-50 rounded-lg">
             <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยน/หน้าเปล่า</summary>
             <div class="mt-2 text-sm">
               ระบบมีโหมดสร้าง PDF แบบแคปเจอร์หน้า (html2canvas) ซึ่งแก้ปัญหาฟอนต์/เว้นบรรทัดผิด ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ในหน้า “คำนวณภาษี” หรือปุ่มบนหน้านี้
             </div>
           </details>
+
           <details class="mb-2 p-3 bg-gray-50 rounded-lg">
             <summary class="cursor-pointer font-medium">ดูไฟล์ใบเสร็จที่อัปโหลดไปแล้วตรงไหน</summary>
             <div class="mt-2 text-sm">
@@ -1109,7 +1118,7 @@ async function exportHistoryPDF_Fallback() {
   }
 }
 
-/* --- ✨ PDF ของคู่มือ (แคปเจอร์หน้า guide) --- */
+/* --- ✨ PDF ของคู่มือ (แคปเจอร์หน้า guide) — ปรับใหม่ให้กันหน้าเปล่า/ฟอนต์หาย --- */
 async function exportGuidePDF() {
   try {
     const { jsPDF } = window.jspdf || {};
@@ -1127,15 +1136,30 @@ async function exportGuidePDF() {
       document.body.appendChild(host);
     }
     host.innerHTML = '';
+    host.style.position = 'fixed';
+    host.style.left = '-10000px';
+    host.style.top = '0';
+    host.style.width = '1000px';
+    host.style.background = '#ffffff';
+    host.style.zIndex = '-1';
+    host.style.pointerEvents = 'none';
 
     const clone = src.cloneNode(true);
     clone.classList.remove('hidden');
     clone.style.display = 'block';
     clone.style.width = '1000px';
     clone.style.background = '#ffffff';
+
+    // เปิด details ทั้งหมด เพื่อให้เนื้อหาแสดงครบก่อนแคปเจอร์
+    clone.querySelectorAll('details').forEach(d => d.open = true);
+
     host.appendChild(clone);
 
-    await new Promise(r => setTimeout(r, 200));
+    // รอฟอนต์และเลย์เอาต์
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (_) {}
+    }
+    await new Promise(r => setTimeout(r, 400));
 
     const scale = 2;
     const canvas = await html2canvas(clone, {
@@ -1145,8 +1169,14 @@ async function exportGuidePDF() {
       allowTaint: false,
       logging: false,
       windowWidth: clone.scrollWidth,
-      windowHeight: clone.scrollHeight
+      windowHeight: clone.scrollHeight,
+      foreignObjectRendering: false
     });
+
+    if (!canvas || !canvas.width || !canvas.height) {
+      throw new Error('แคปเจอร์ไม่สำเร็จ (canvas ว่าง)');
+    }
+
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
     const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -1187,7 +1217,7 @@ async function exportGuidePDF() {
     host.innerHTML = '';
   } catch (e) {
     console.error(e);
-    alert(e.message || e);
+    alert('สร้าง PDF ไม่สำเร็จ: ' + (e.message || e));
   }
 }
 
