@@ -471,6 +471,13 @@ function showDiag(lines){
     pre.textContent = (Array.isArray(lines)?lines:[lines]).join('\n');
   }
 }
+/* ✅ ซ่อน Splash แบบกันตายหลายชั้น */
+function splashSafeHide(){
+  const s = document.getElementById('splash');
+  if (!s) return;
+  s.style.opacity = '0';
+  setTimeout(()=>{ if (s && s.style) s.style.display = 'none'; }, 800);
+}
 
 /* ========= GLOBALS ========= */
 let db, auth;
@@ -666,10 +673,10 @@ function updateDateTime(){
 }
 setInterval(updateDateTime, 1000); updateDateTime();
 
-window.addEventListener('load', ()=>{
-  setTimeout(()=>{ const s=document.getElementById('splash'); s.style.opacity='0'; setTimeout(()=>s.style.display='none',800); },1200);
-  showOnly('welcome');
-});
+/* ✅ ซ่อน Splash: DOM พร้อม, โหลดครบ, และกันตายผ่าน timeout */
+document.addEventListener('DOMContentLoaded', ()=>{ splashSafeHide(); showOnly('welcome'); });
+window.addEventListener('load', splashSafeHide);
+setTimeout(splashSafeHide, 4000);
 
 // Auth tabs
 const loginTab = document.getElementById('loginTab');
@@ -1195,7 +1202,7 @@ async function exportHistoryPDF_TextMode(){
 
         // สร้างรูปชั่วคราวเพื่ออ่านอัตราส่วน
         const img = new Image();
-        const imgLoaded = await new Promise((resolve)=>{ img.onload=resolve; img.src=dataURL; });
+        await new Promise((resolve)=>{ img.onload=resolve; img.src=dataURL; });
         const ratio = img.width / img.height;
         let renderW = usableW;
         let renderH = renderW / ratio;
@@ -1354,9 +1361,14 @@ document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDri
     ];
     checks.forEach(([k,v])=> diag.push(`${v?'[OK]':'[X]'} ${k}`));
     showDiag(diag);
+
+    /* ✅ ซ่อนสแปลชเมื่อบูตสำเร็จ */
+    splashSafeHide();
   }catch(err){
     console.error(err);
     showDiag(['[X] boot failed', String(err)]);
+    /* ✅ ซ่อนสแปลชแม้บูตล้มเหลว */
+    splashSafeHide();
     alert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ: '+ err.message);
   }
 })();
