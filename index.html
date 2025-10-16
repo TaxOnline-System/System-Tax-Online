@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-<!-- html2canvas (ยังคงโหลดเผื่อ feature อื่น แต่จะไม่ใช้ทำ PDF สรุป) -->
+<!-- html2canvas (สำหรับแคปเจอร์ DOM → รูปภาพ ใส่เพิ่ม) -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
@@ -35,9 +35,10 @@
   .nav-link{display:inline-block;margin:.25rem .4rem}
   #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
 
-  /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า (คงไว้เผื่อฟังก์ชันอื่น) */
+  /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า (เพิ่มใหม่) */
   #print-clone-host{ position: fixed; left: -10000px; top: 0; width: 1000px; background: #fff; }
 
+  /* ---- Print safety: ลดปัญหาเวลาแคปเจอร์เป็น PDF ---- */
   @media print {
     body { animation: none !important; }
     #splash, header, footer, .fixed { display: none !important; }
@@ -64,6 +65,7 @@
       <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">บันทึกรายการ</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="history">คำนวณภาษี</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="profile">โปรไฟล์</button>
+      <!-- ✨ เพิ่มปุ่มเมนูคู่มือ -->
       <button class="nav-link text-gray-700 hover:underline" data-nav="guide">คู่มือใช้งาน</button>
       <button id="loginNav" class="nav-link text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
       <button id="logoutBtn" class="nav-link text-red-600 hover:underline hidden">ออกจากระบบ</button>
@@ -91,6 +93,7 @@
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
       <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มบันทึกรายการ</button>
       <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
+      <!-- (ทางเลือก) ปุ่มลัดไปคู่มือ -->
       <button class="bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-full text-lg shadow transition border" data-nav="guide">อ่านคู่มือ</button>
     </div>
   </section>
@@ -282,19 +285,26 @@
     </div>
   </section>
 
-  <!-- Guide -->
+  <!-- ✨ Guide -->
   <section id="guideSection" class="hidden fade-in px-4">
     <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
-        <button id="downloadGuidePdfBtn" class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm">
-          ดาวน์โหลดคู่มือ PDF
-        </button>
+        <!-- ✅ เปลี่ยนเป็นลิงก์ไป Google Drive -->
+        <a
+          id="downloadGuidePdfBtn"
+          href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
+          target="_blank" rel="noopener"
+          class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
+        >
+          ดาวน์โหลดคู่มือ (Drive)
+        </a>
       </div>
 
       <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
 
       <div class="mt-6 space-y-8 text-gray-800 leading-relaxed">
+
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">1) ภาพรวมระบบ</h4>
           <ul class="list-disc ml-5 space-y-1">
@@ -350,7 +360,7 @@
               <p class="font-medium">3.5 ส่งออก & จัดเก็บ</p>
               <ul class="list-disc ml-5">
                 <li>กด <b>ดาวน์โหลด CSV</b> เพื่อส่งออกประวัติละเอียด</li>
-                <li>กด <b>ดาวน์โหลดสรุป PDF</b> เพื่อเก็บรายงานสรุปแบบตัวหนังสือ พร้อมแนบภาพใบเสร็จท้ายไฟล์</li>
+                <li>กด <b>ดาวน์โหลดสรุป PDF</b> เพื่อเก็บรายงานสรุปแบบหน้าเดียว/หลายหน้า</li>
                 <li>กด <b>เปิดโฟลเดอร์ Drive</b> เพื่อเข้าไปดูไฟล์ใบเสร็จใน Google Drive</li>
               </ul>
             </div>
@@ -363,6 +373,7 @@
           <p class="text-sm text-gray-600 mt-1">*ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับที่ปรึกษาภาษีหรือกรมสรรพากรอีกครั้ง</p>
         </section>
 
+        <!-- ✅ แก้โครงสร้าง FAQ (ลบ </details> เกิน) -->
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
 
@@ -374,9 +385,9 @@
           </details>
 
           <details class="mb-2 p-3 bg-gray-50 rounded-lg">
-            <summary class="cursor-pointer font-medium">ไฟล์ PDF สรุปตัวหนังสืออ่านชัด ไม่ใช่ภาพ</summary>
+            <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยน/หน้าเปล่า</summary>
             <div class="mt-2 text-sm">
-              ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> จะสร้างเอกสารตัวอักษรจริงด้วยฟอนต์ไทย และแนบภาพใบเสร็จท้ายรายงาน (ไฟล์ที่เป็น PDF จะใส่ลิงก์ไว้แทน)
+              ระบบมีโหมดสร้าง PDF แบบแคปเจอร์หน้า (html2canvas) ซึ่งแก้ปัญหาฟอนต์/เว้นบรรทัดผิด ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ในหน้า “คำนวณภาษี”
             </div>
           </details>
 
@@ -391,7 +402,7 @@
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">6) เคล็ดลับ & ความปลอดภัย</h4>
           <ul class="list-disc ml-5 space-y-1">
-            <li>ตั้งชื่อไฟล์ใบเสร็จให้สื่อความหมาย เช่น <code>2025-03-10_ขนส่ง_kerry_350บาท.jpg</code></li>
+            <li>ตั้งชื่อไฟล์ใบเสร็จให้สื่อความหมาย เช่น <code>2025-03-10_ขนส่ง_kerry_350บาท.pdf</code></li>
             <li>ลงชื่อเข้าใช้เฉพาะอุปกรณ์ที่เชื่อถือ และกด “ออกจากระบบ” เมื่อใช้งานเสร็จ</li>
             <li>สำรอง CSV/PDF เป็นระยะ ๆ เผื่อกรณีฉุกเฉิน</li>
           </ul>
@@ -596,7 +607,7 @@ const sections = {
   profile: document.getElementById('profileSection'),
   calculator: document.getElementById('calculatorSection'),
   history: document.getElementById('historySection'),
-  guide: document.getElementById('guideSection'),
+  guide: document.getElementById('guideSection'), // ✨ เพิ่มคู่มือ
   diag: document.getElementById('diagWrap')
 };
 const userGreeting = document.getElementById('userGreeting');
@@ -846,6 +857,7 @@ async function fetchAllCalculations() {
   });
 }
 
+// ตัดแถวซ้ำ (สำหรับรวม/แสดง/ส่งออก) — key: date|income|expense|deduction
 function maybeDedupe(rows){
   const chk = document.getElementById('dedupeToggle');
   if (!chk || !chk.checked) return rows;
@@ -914,6 +926,7 @@ async function loadHistory(){
       historyBody.appendChild(tr);
     });
 
+    // delete handlers
     historyBody.querySelectorAll('[data-del]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
         if (!confirm('ยืนยันการลบรายการนี้?')) return;
@@ -933,6 +946,7 @@ async function loadHistory(){
 
 document.getElementById('refreshHistory').addEventListener('click', loadHistory);
 
+// Bind method panel + dedupe
 function bindMethodPanel(){
   const radios = document.querySelectorAll('input[name="sumExpenseMethod"]');
   const cfgBox = document.getElementById('sumLumpsumConfig');
@@ -980,7 +994,7 @@ async function exportHistoryCSV() {
   } catch(e) { alert(e.message || e); }
 }
 
-/* --- ฟอนต์ไทยสำหรับ jsPDF --- */
+/* --- ฟอนต์ไทยสำหรับ jsPDF (ยังคงไว้ใช้กับเอกสารแบบตาราง) --- */
 async function ensureThaiFont() {
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) throw new Error('jsPDF ยังไม่พร้อม');
@@ -1018,196 +1032,112 @@ async function ensureThaiFont() {
   catch (e) { throw new Error('ลงทะเบียนฟอนต์ไทยไม่สำเร็จ: ' + e.message); }
 }
 
-/* --- Helper: ดึงภาพจาก Google Drive ด้วย fileId -> DataURL --- */
-async function getDriveFileDataURL(fileId){
-  if (!fileId) return null;
-  await ensureDriveToken();
-  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
-  const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + driveAccessToken }});
-  if (!res.ok) return null;
-  const blob = await res.blob();
-  // รองรับเฉพาะ image/*
-  if (!/^image\\//.test(blob.type)) return null;
-  const dataURL = await new Promise((resolve,reject)=>{
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = reject;
-    fr.readAsDataURL(blob);
-  });
-  return dataURL;
-}
-
-/* --- NEW: สร้าง PDF ตัวหนังสือ + แนบภาพใบเสร็จท้ายไฟล์ --- */
-async function exportHistoryPDF_Text() {
+/* --- PDF Fallback: แคปเจอร์หน้าประวัติ (แก้ปัญหา PDF ขาว/ตัวเพี้ยน) --- */
+async function exportHistoryPDF_Fallback() {
   try {
     const { jsPDF } = window.jspdf || {};
     if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
+    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
     if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
 
-    // โหลดข้อมูลล่าสุด
-    const rows = await fetchAllCalculations();
-    const cfg = getExpenseConfigFromUI();
-    const rowsUse = maybeDedupe(rows);
+    // อัปเดตข้อมูลล่าสุดก่อนแคปเจอร์
+    await loadHistory();
 
-    await ensureThaiFont();
+    const src = document.getElementById('historySection');
+    if (!src) { alert('ไม่พบส่วนประวัติ'); return; }
 
-    const doc = new jsPDF({ orientation:'p', unit:'mm', format:'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const marginX = 14, marginY = 14;
+    // host สำหรับโคลน (ซ่อนนอกจอ)
+    let host = document.getElementById('print-clone-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'print-clone-host';
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
 
-    doc.setFont('NotoSansThai', 'normal');
+    // โคลนเนื้อหาและทำให้มองเห็นได้เพื่อให้ html2canvas เรนเดอร์
+    const clone = src.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.width = '1000px';
+    clone.style.background = '#ffffff';
+    host.appendChild(clone);
 
-    // หัวรายงาน
-    doc.setFontSize(16);
-    doc.text('สรุปรายการรายได้/รายจ่าย/ลดหย่อน (เพื่อยื่นภาษี)', marginX, 18);
-    doc.setFontSize(11);
-    const user = auth.currentUser;
-    const issued = new Date().toLocaleString('th-TH');
-    const methodStr = cfg.method==='lumpsum'
-      ? `วิธีรายจ่าย: เหมาจ่าย ${cfg.percent||0}%${cfg.cap?` (เพดาน ${Number(cfg.cap).toLocaleString('th-TH')} บาท)`:''}`
-      : 'วิธีรายจ่าย: ตามจริง';
-    doc.text(`ผู้ใช้: ${user.displayName || user.email || user.uid}`, marginX, 26);
-    doc.text(`พิมพ์เมื่อ: ${issued}`, marginX, 31);
-    doc.text(methodStr, marginX, 36);
+    // เผื่อเวลาให้ layout/ฟอนต์โหลด
+    await new Promise(r => setTimeout(r, 300));
 
-    // เตรียมข้อมูลตาราง
-    const body = [];
-    let sumIncome=0, sumExpense=0, sumDeduct=0, sumNet=0;
-    rowsUse.forEach(r=>{
-      const expUsed = computeExpenseUsed(r, cfg);
-      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
-      sumIncome += Number(r.income||0);
-      sumExpense += expUsed;
-      sumDeduct += Number(r.deduction||0);
-      sumNet += net;
-      body.push([
-        r.date || '',
-        (r.income||0).toLocaleString('th-TH'),
-        expUsed.toLocaleString('th-TH'),
-        (r.deduction||0).toLocaleString('th-TH'),
-        net.toLocaleString('th-TH')
-      ]);
+    // DOM -> Canvas
+    const scale = 2; // คมชัด
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight
     });
-    const approxTax = thaiProgressiveTax(sumNet);
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    // ตารางรายการ
-    doc.autoTable({
-      startY: 42,
-      styles: { font: 'NotoSansThai', fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [236,72,153] }, // สีหัวข้ออ่อน ๆ
-      head: [['วันที่','รายได้','รายจ่ายใช้คำนวณ','ลดหย่อน','สุทธิ (ต่อรายการ)']],
-      body
-    });
+    // ใส่ลง PDF A4 (ตัดหลายหน้าอัตโนมัติ)
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210
+    const pageH = pdf.internal.pageSize.getHeight();  // 297
 
-    // สรุปตัวเลข
-    let y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 6 : 42;
-    if (y > pageH - 40) { doc.addPage(); y = marginY; }
-    doc.setFontSize(12);
-    doc.text('สรุป', marginX, y);
-    y += 6;
-    doc.setFontSize(11);
-    doc.text(`รายได้รวม: ${sumIncome.toLocaleString('th-TH')} บาท`, marginX, y); y+=6;
-    doc.text(`รายจ่ายรวม (ตามวิธีที่เลือก): ${sumExpense.toLocaleString('th-TH')} บาท`, marginX, y); y+=6;
-    doc.text(`ลดหย่อนรวม: ${sumDeduct.toLocaleString('th-TH')} บาท`, marginX, y); y+=6;
-    doc.setFontSize(12);
-    doc.text(`ภาษีที่ต้องชำระ (ประมาณ): ${approxTax.toLocaleString('th-TH')} บาท`, marginX, y);
+    const imgPxW = canvas.width;
+    const imgPxH = canvas.height;
+    const ratio  = imgPxW / imgPxH;
+    const renderW = pageW;
+    const renderH = renderW / ratio;
 
-    // แนบภาพใบเสร็จ (เฉพาะที่เป็นรูปภาพ)
-    const imageEntries = [];
-    rowsUse.forEach(r=>{
-      (r.receipts||[]).forEach(rec=>{
-        if (rec && rec.driveFileId) {
-          imageEntries.push({ id: rec.driveFileId, name: rec.name, mime: rec.mimeType });
-        }
-      });
-    });
+    if (renderH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
+    } else {
+      const pxPerMm = imgPxW / renderW;
+      const pagePxH = pageH * pxPerMm;
+      let sY = 0, page = 0;
 
-    // ถ้ามี PDF ใบเสร็จ ให้สรุปชื่อ + ลิงก์แยกไว้ท้ายบท
-    const pdfEntries = imageEntries.filter(x=> x.mime && x.mime.startsWith('application/pdf'));
-    const imgEntries = imageEntries.filter(x=> x.mime && x.mime.startsWith('image/'));
+      while (sY < imgPxH) {
+        const sliceH = Math.min(pagePxH, imgPxH - sY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = imgPxW;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
 
-    if (imgEntries.length){
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text('ภาคผนวก: ภาพใบเสร็จ', marginX, marginY);
-      let curY = marginY + 6;
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
 
-      for (let i=0; i<imgEntries.length; i++){
-        const ent = imgEntries[i];
-        const dataURL = await getDriveFileDataURL(ent.id);
-        if (!dataURL) continue;
-
-        // จัดขนาดให้พอดี A4
-        // กำหนดให้ความกว้างภาพประมาณเต็มหน้าด้วย margin
-        const maxW = pageW - marginX*2;
-        const maxH = pageH - marginY*2 - 10; // เว้นเฮดดิ้ง
-        // ใส่ภาพในขนาดไม่รู้สัดส่วน => ต้องสร้างภาพชั่วคราวเพื่ออ่านขนาด
-        const img = new Image();
-        img.src = dataURL;
-        await new Promise(r => { img.onload = r; img.onerror = r; });
-
-        let w = img.width, h = img.height;
-        if (!w || !h) { w = maxW; h = maxH; }
-        const ratio = Math.min(maxW / w, maxH / h);
-        const drawW = Math.max(20, Math.floor(w * ratio));
-        const drawH = Math.max(20, Math.floor(h * ratio));
-
-        if (curY + drawH > pageH - marginY) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text('ภาคผนวก: ภาพใบเสร็จ (ต่อ)', marginX, marginY);
-          curY = marginY + 6;
-        }
-
-        // ชื่อไฟล์
-        doc.setFontSize(10);
-        doc.text(`${ent.name||''}`, marginX, curY);
-        curY += 4;
-
-        doc.addImage(dataURL, (/png$/i.test(ent.mime)?'PNG':'JPEG'), marginX, curY, drawW, drawH, undefined, 'FAST');
-        curY += drawH + 8;
+        sY += sliceH;
+        page += 1;
       }
     }
 
-    if (pdfEntries.length){
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text('ภาคผนวก: รายการใบเสร็จที่เป็นไฟล์ PDF (แนบเป็นลิงก์)', marginX, marginY);
-      doc.setFontSize(11);
-      let curY = marginY + 8;
-      pdfEntries.forEach((ent, idx)=>{
-        // สร้างลิงก์เปิดดูใน Drive (ผู้ใช้มีสิทธิ์ตามไฟล์ของเขาเอง)
-        const url = `https://drive.google.com/file/d/${encodeURIComponent(ent.id)}/view`;
-        const line = `${idx+1}. ${ent.name||'ใบเสร็จ PDF'}`;
-        if (curY > pageH - marginY - 6) { doc.addPage(); curY = marginY; }
-        doc.textWithLink(line, marginX, curY, { url });
-        curY += 6;
-      });
-    }
+    pdf.save('taxonline_summary.pdf');
 
-    doc.save('taxonline_summary.pdf');
+    // cleanup
+    host.innerHTML = '';
   } catch (e) {
     console.error(e);
     alert(e.message || e);
   }
 }
 
-/* ====== ปุ่มต่าง ๆ ====== */
-document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
-/* เปลี่ยนเป็นตัวหนังสือ + แนบภาพใบเสร็จ (ไม่ใช้แคปหน้าจอ) */
-document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Text);
-document.getElementById('openDriveFolderBtn')?.addEventListener('click', async ()=>{
+async function openDriveFolder() {
   try {
     const { webViewLink } = await getOrCreateDriveFolder();
     if (!webViewLink) { alert('ยังไม่มีโฟลเดอร์'); return; }
     window.open(webViewLink, '_blank');
   } catch(e) { alert(e.message || e); }
-});
-/* ปุ่มดาวน์โหลดคู่มือ: เปิดลิงก์ Drive ที่ให้มา */
-document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', ()=>{
-  window.open('https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link','_blank');
-});
+}
+
+document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
+/* เปลี่ยนให้กดดาวน์โหลด PDF ใช้ fallback ใหม่นี้ */
+document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Fallback);
+document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
+/* ❌ ลบการ bind ปุ่มคู่มือ (ใช้ลิงก์ <a> เปิด Drive แล้ว) */
+/* document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', exportGuidePDF); */
 
 /* ========= BOOT ========= */
 (async function boot(){
@@ -1221,6 +1151,7 @@ document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', ()=>{
       authDomain: "tax-online-6afdd.firebaseapp.com",
       projectId: "tax-online-6afdd",
       appId: "1:959276043439:web:f358ce055687efea5d185a"
+      // ถ้ามี Firebase Storage ให้เพิ่ม: storageBucket: "your-bucket.appspot.com"
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
