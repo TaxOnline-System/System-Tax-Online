@@ -14,10 +14,10 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
-<!-- html2canvas (ยังคงโหลดไว้ แต่ “ไม่ใช้” สำหรับสรุปภาษี) -->
+<!-- html2canvas (สำหรับแคปเจอร์ DOM → รูปภาพ ใส่เพิ่ม) -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<!-- Firebase v8 -->
+<!-- Firebase v8 (ต้องโหลดก่อนสคริปต์ของเรา) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -35,9 +35,10 @@
   .nav-link{display:inline-block;margin:.25rem .4rem}
   #diag{font-family:ui-monospace,Menlo,Consolas,monospace}
 
-  /* พื้นที่โคลนเวลาแคปเจอร์ (เผื่อใช้ในหน้าอื่น) */
+  /* สำหรับโคลนเนื้อหาไปแคปเจอร์แบบไม่กะพริบหน้า (เพิ่มใหม่) */
   #print-clone-host{ position: fixed; left: -10000px; top: 0; width: 1000px; background: #fff; }
 
+  /* ---- Print safety: ลดปัญหาเวลาแคปเจอร์เป็น PDF ---- */
   @media print {
     body { animation: none !important; }
     #splash, header, footer, .fixed { display: none !important; }
@@ -64,6 +65,7 @@
       <button class="nav-link text-gray-700 hover:underline" data-nav="calculator">บันทึกรายการ</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="history">คำนวณภาษี</button>
       <button class="nav-link text-gray-700 hover:underline" data-nav="profile">โปรไฟล์</button>
+      <!-- ✨ เพิ่มปุ่มเมนูคู่มือ -->
       <button class="nav-link text-gray-700 hover:underline" data-nav="guide">คู่มือใช้งาน</button>
       <button id="loginNav" class="nav-link text-blue-600 hover:underline font-semibold" data-nav="auth">เข้าสู่ระบบ</button>
       <button id="logoutBtn" class="nav-link text-red-600 hover:underline hidden">ออกจากระบบ</button>
@@ -91,6 +93,7 @@
     <div class="mt-6 flex items-center justify-center gap-3 flex-wrap">
       <button class="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="calculator">เริ่มบันทึกรายการ</button>
       <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow transition" data-nav="auth" id="welcomeLoginBtn">เข้าสู่ระบบ / สมัครสมาชิก</button>
+      <!-- (ทางเลือก) ปุ่มลัดไปคู่มือ -->
       <button class="bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-full text-lg shadow transition border" data-nav="guide">อ่านคู่มือ</button>
     </div>
   </section>
@@ -282,17 +285,20 @@
     </div>
   </section>
 
-  <!-- Guide -->
+  <!-- ✨ Guide -->
   <section id="guideSection" class="hidden fade-in px-4">
     <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-2xl font-semibold text-pink-600">คู่มือการใช้งานระบบ TaxOnline</h3>
+        <!-- ✅ เปลี่ยนเป็นลิงก์ไป Google Drive -->
         <a
           id="downloadGuidePdfBtn"
           href="https://drive.google.com/file/d/1Idi6tDGyHwteXrs6a0WaRw1aXDDEW4bE/view?usp=drive_link"
           target="_blank" rel="noopener"
           class="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm"
-        >ดาวน์โหลดคู่มือ (Drive)</a>
+        >
+          ดาวน์โหลดคู่มือ (Drive)
+        </a>
       </div>
 
       <p class="mt-2 text-gray-600 text-sm">อัปเดต: 2025</p>
@@ -367,6 +373,7 @@
           <p class="text-sm text-gray-600 mt-1">*ผลลัพธ์เป็นการประเมินเบื้องต้น ผู้ใช้ควรตรวจสอบกับที่ปรึกษาภาษีหรือกรมสรรพากรอีกครั้ง</p>
         </section>
 
+        <!-- ✅ แก้โครงสร้าง FAQ (ลบ </details> เกิน) -->
         <section>
           <h4 class="text-xl font-semibold text-blue-600 mb-2">5) คำถามที่พบบ่อย (FAQ)</h4>
 
@@ -380,7 +387,7 @@
           <details class="mb-2 p-3 bg-gray-50 rounded-lg">
             <summary class="cursor-pointer font-medium">ไฟล์ PDF ที่โหลดตัวหนังสือเพี้ยน/หน้าเปล่า</summary>
             <div class="mt-2 text-sm">
-              (ปุ่มสรุป PDF หน้านี้ ใช้แบบ “ตัวอักษรจริง” แล้ว)
+              ระบบมีโหมดสร้าง PDF แบบแคปเจอร์หน้า (html2canvas) ซึ่งแก้ปัญหาฟอนต์/เว้นบรรทัดผิด ให้ใช้ปุ่ม <b>ดาวน์โหลดสรุป PDF</b> ในหน้า “คำนวณภาษี”
             </div>
           </details>
 
@@ -423,21 +430,6 @@
 <footer class="bg-white p-4 text-center text-sm text-gray-500">
   &copy; 2025 ระบบเว็บไซต์คำนวณภาษีสำหรับพ่อค้า แม่ค้าออนไลน์
 </footer>
-
-<!-- ========== Fail-safe Splash: กันหน้า “ค้างกำลังโหลด” ========== -->
-<script>
-(function(){
-  function hideSplash(){
-    var s=document.getElementById('splash'); if(!s) return;
-    s.style.opacity='0'; setTimeout(function(){ try{ s.style.display='none'; }catch(e){} },800);
-  }
-  window.__taxonlineSplashTimer=setTimeout(hideSplash,5000);
-  window.addEventListener('load', function(){ setTimeout(hideSplash,1200); });
-  window.addEventListener('error', function(evt){ console.error('[GlobalError]', evt.error||evt.message||evt); hideSplash(); });
-  window.addEventListener('unhandledrejection', function(evt){ console.error('[UnhandledRejection]', evt.reason); hideSplash(); });
-  window.__hideSplashNow = hideSplash;
-})();
-</script>
 
 <script>
 /* ========= UTIL ========= */
@@ -615,7 +607,7 @@ const sections = {
   profile: document.getElementById('profileSection'),
   calculator: document.getElementById('calculatorSection'),
   history: document.getElementById('historySection'),
-  guide: document.getElementById('guideSection'),
+  guide: document.getElementById('guideSection'), // ✨ เพิ่มคู่มือ
   diag: document.getElementById('diagWrap')
 };
 const userGreeting = document.getElementById('userGreeting');
@@ -738,4 +730,525 @@ document.getElementById('receiptUpload').addEventListener('change', function(){
   const info = document.getElementById('fileInfo');
   const preview = document.getElementById('previewArea');
   if (info) info.textContent = `คุณเลือก ${files.length} ไฟล์`;
- 
+  if (preview) {
+    preview.innerHTML = '';
+    files.forEach(f=>{
+      if (f.type.startsWith('image/')) {
+        const fr = new FileReader();
+        fr.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result; img.className='w-full h-24 object-cover rounded shadow';
+          preview.appendChild(img);
+        };
+        fr.readAsDataURL(f);
+      } else {
+        const p = document.createElement('p'); p.textContent = `📄 ${f.name}`; p.className='text-xs text-gray-700';
+        preview.appendChild(p);
+      }
+    });
+  }
+});
+
+/* ========= Tax utils ========= */
+function thaiProgressiveTax(net){
+  if (net <= 0) return 0;
+  const brackets = [
+    { limit: 150000, rate: 0.00 },
+    { limit: 300000, rate: 0.05 },
+    { limit: 500000, rate: 0.10 },
+    { limit: 750000, rate: 0.15 },
+    { limit: 1000000, rate: 0.20 },
+    { limit: 2000000, rate: 0.25 },
+    { limit: 5000000, rate: 0.30 },
+    { limit: Infinity, rate: 0.35 }
+  ];
+  let tax = 0; let prev = 0;
+  for (const b of brackets){
+    const upper = Math.min(net, b.limit);
+    if (upper > prev) tax += (upper - prev) * b.rate;
+    if (net <= b.limit) break; prev = b.limit;
+  }
+  return tax;
+}
+
+function getExpenseConfigFromUI(){
+  const method = (document.querySelector('input[name="sumExpenseMethod"]:checked')||{}).value || 'actual';
+  const percent = Number(document.getElementById('sumLumpsumPercent')?.value || 50);
+  const cap = Number(document.getElementById('sumLumpsumCap')?.value || NaN);
+  return { method, percent, cap };
+}
+
+function computeExpenseUsed(row, cfg){
+  const income = Number(row.income||0);
+  if (!cfg || cfg.method === 'actual') return Number(row.expense||0);
+  const p = Math.max(0, Math.min(100, Number(cfg.percent||50)));
+  const cap = Number(cfg.cap);
+  const byPercent = income * (p/100);
+  return (isNaN(cap) || cap<=0) ? byPercent : Math.min(byPercent, cap);
+}
+
+/* ========= บันทึกรายการ ========= */
+const recordForm = document.getElementById('recordForm');
+recordForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const income = Number(document.getElementById('rec_income').value);
+  const expense = Number(document.getElementById('rec_expense').value);
+  const deduction = Number(document.getElementById('rec_deduction').value);
+  const fileInput = document.getElementById('receiptUpload');
+  const files = fileInput?.files || [];
+
+  if (Number.isNaN(income)) { alert('กรุณาใส่รายได้เป็นตัวเลข'); return; }
+  if (Number.isNaN(expense)) { alert('กรุณาใส่รายจ่ายตามจริงเป็นตัวเลข'); return; }
+  if (Number.isNaN(deduction)) { alert('กรุณาใส่ค่าลดหย่อนเป็นตัวเลข'); return; }
+
+  if (!auth || !auth.currentUser){ saveMsg.textContent='ยังไม่ได้เข้าสู่ระบบ จึงไม่บันทึก/อัปโหลด'; saveMsg.className='text-yellow-600 text-sm mt-3'; return; }
+
+  try {
+    const payload = {
+      income: income||0,
+      expense: expense||0,
+      deduction: deduction||0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      receipts: []
+    };
+
+    const docRef = await db.collection('users').doc(auth.currentUser.uid).collection('calculations').add(payload);
+
+    let uploaded = [];
+    if (files.length > 0) {
+      await ensureDriveToken();
+      const folderInfo = await getOrCreateDriveFolder();
+      uploaded = await uploadFilesToDrive(files, folderInfo);
+    }
+
+    if (uploaded.length) await docRef.update({ receipts: uploaded });
+
+    recordForm.reset();
+    document.getElementById('fileInfo').textContent='';
+    document.getElementById('previewArea').innerHTML='';
+
+    saveMsg.textContent = uploaded.length ? `บันทึกรายการแล้ว และอัปโหลดไป Google Drive (${uploaded.length} ไฟล์)` : 'บันทึกรายการสำเร็จ';
+    saveMsg.className = 'text-green-600 text-sm mt-3';
+  } catch(e){
+    console.error(e);
+    saveMsg.textContent = `บันทึก/อัปโหลดล้มเหลว: ${e.message||''}`;
+    saveMsg.className = 'text-red-600 text-sm mt-3';
+  }
+});
+
+/* ========= History ========= */
+let lastRows = [];
+
+async function fetchAllCalculations() {
+  if (!auth || !auth.currentUser) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
+  const snap = await db.collection('users').doc(auth.currentUser.uid)
+    .collection('calculations').orderBy('createdAt','desc').get();
+  return snap.docs.map(d => {
+    const v = d.data();
+    const dt = v.createdAt && v.createdAt.toDate ? v.createdAt.toDate() : null;
+    return {
+      id: d.id,
+      date: dt ? dt.toLocaleString('th-TH') : '',
+      income: v.income || 0,
+      expense: v.expense || 0,
+      deduction: v.deduction || 0,
+      receipts: Array.isArray(v.receipts) ? v.receipts : []
+    };
+  });
+}
+
+// ตัดแถวซ้ำ (สำหรับรวม/แสดง/ส่งออก) — key: date|income|expense|deduction
+function maybeDedupe(rows){
+  const chk = document.getElementById('dedupeToggle');
+  if (!chk || !chk.checked) return rows;
+  const seen = new Set();
+  const out = [];
+  for (const r of rows){
+    const key = [r.date, Number(r.income||0), Number(r.expense||0), Number(r.deduction||0)].join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+function renderSummary(rows){
+  const cfg = getExpenseConfigFromUI();
+  const rowsUse = maybeDedupe(rows);
+  let sumIncome=0, sumExpense=0, sumDeduct=0, sumNet=0;
+  rowsUse.forEach(r=>{
+    const inc = Number(r.income||0);
+    const expUsed = computeExpenseUsed(r, cfg);
+    const ded = Number(r.deduction||0);
+    sumIncome += inc; sumExpense += expUsed; sumDeduct += ded; sumNet += Math.max(0, inc - expUsed - ded);
+  });
+  const tax = thaiProgressiveTax(sumNet);
+  document.getElementById('sumIncome').textContent = sumIncome.toLocaleString('th-TH');
+  document.getElementById('sumExpense').textContent = sumExpense.toLocaleString('th-TH');
+  document.getElementById('sumDeduct').textContent = sumDeduct.toLocaleString('th-TH');
+  document.getElementById('sumTax').textContent = tax.toLocaleString('th-TH');
+}
+
+async function loadHistory(){
+  historyMsg.textContent=''; historyBody.innerHTML='';
+  if (!auth || !auth.currentUser) { historyMsg.textContent='กรุณาเข้าสู่ระบบ'; historyMsg.className='text-red-600'; return; }
+
+  try {
+    const rows = await fetchAllCalculations();
+    lastRows = rows;
+    const cfg = getExpenseConfigFromUI();
+    const rowsUse = maybeDedupe(rows);
+
+    if (!rowsUse.length){
+      historyBody.innerHTML = `<tr><td colspan="7" class="px-3 py-3 text-center text-gray-500">ยังไม่มีรายการ</td></tr>`;
+      renderSummary([]);
+      return;
+    }
+
+    rowsUse.forEach(r=>{
+      const expUsed = computeExpenseUsed(r, cfg);
+      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
+      const filesLinks = (r.receipts && r.receipts.length)
+        ? r.receipts.map((x,i)=>`<a href="${x.webViewLink}" target="_blank" class="text-blue-600 hover:underline">ไฟล์ ${i+1}</a>`).join(' · ')
+        : '<span class="text-gray-400">—</span>';
+
+      const tr = document.createElement('tr');
+      tr.className='border-b';
+      tr.innerHTML = `
+        <td class="px-3 py-2 whitespace-nowrap">${r.date||''}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${(r.income||0).toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${expUsed.toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${(r.deduction||0).toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap font-semibold">${net.toLocaleString('th-TH')}</td>
+        <td class="px-3 py-2 whitespace-nowrap">${filesLinks}</td>
+        <td class="px-3 py-2 whitespace-nowrap"><button data-del="${r.id}" class="text-red-600 hover:underline text-xs">ลบ</button></td>
+      `;
+      historyBody.appendChild(tr);
+    });
+
+    // delete handlers
+    historyBody.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if (!confirm('ยืนยันการลบรายการนี้?')) return;
+        try {
+          const calcId = btn.getAttribute('data-del');
+          await db.collection('users').doc(auth.currentUser.uid).collection('calculations').doc(calcId).delete();
+          loadHistory();
+        } catch(e){ alert(e.message); }
+      });
+    });
+
+    renderSummary(rows);
+  } catch(e){
+    historyMsg.textContent = e.message; historyMsg.className='text-red-600';
+  }
+}
+
+document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+
+// Bind method panel + dedupe
+function bindMethodPanel(){
+  const radios = document.querySelectorAll('input[name="sumExpenseMethod"]');
+  const cfgBox = document.getElementById('sumLumpsumConfig');
+  const dedupe = document.getElementById('dedupeToggle');
+  function reRender(){ if (lastRows.length){ loadHistory(); } }
+  radios.forEach(r=> r.addEventListener('change', ()=>{
+    const v = (document.querySelector('input[name="sumExpenseMethod"]:checked')||{}).value;
+    if (v==='lumpsum') cfgBox.classList.remove('hidden'); else cfgBox.classList.add('hidden');
+    reRender();
+  }));
+  document.getElementById('sumLumpsumPercent')?.addEventListener('input', reRender);
+  document.getElementById('sumLumpsumCap')?.addEventListener('input', reRender);
+  dedupe.addEventListener('change', reRender);
+}
+window.addEventListener('load', bindMethodPanel);
+
+/* ========= Export CSV ========= */
+async function exportHistoryCSV() {
+  try {
+    const rows = await fetchAllCalculations();
+    const cfg = getExpenseConfigFromUI();
+    const rowsUse = maybeDedupe(rows);
+    const meta = cfg.method==='lumpsum' ? `วิธีรายจ่าย = เหมาจ่าย (${cfg.percent||0}%${cfg.cap?` เพดาน ${cfg.cap}`:''})` : 'วิธีรายจ่าย = ตามจริง';
+    const header = ['วันที่','รายได้','รายจ่ายใช้คำนวณ','ลดหย่อน','สุทธิ(ต่อรายการ)','ไฟล์ใบเสร็จ(ลิงก์)'];
+    const lines = [`"${meta}"`, header.join(',')];
+    rowsUse.forEach(r => {
+      const expUsed = computeExpenseUsed(r, cfg);
+      const net = Math.max(0, (r.income||0) - expUsed - (r.deduction||0));
+      const links = r.receipts.map((x,i) => x.webViewLink||'').join(' | ');
+      lines.push([
+        `"${r.date||''}"`,
+        r.income||0,
+        expUsed,
+        r.deduction||0,
+        net,
+        `"${links}"`
+      ].join(','));
+    });
+    const csv = '\ufeff' + lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'taxonline_history.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { alert(e.message || e); }
+}
+
+/* --- ฟอนต์ไทยสำหรับ jsPDF (ยังคงไว้ใช้กับเอกสารแบบตาราง) --- */
+async function ensureThaiFont() {
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF) throw new Error('jsPDF ยังไม่พร้อม');
+
+  const FONT_NAME = 'NotoSansThai';
+  const VFS_FILE  = 'NotoSansThai-Regular.ttf';
+  const VFS_KEY   = 'pdf_font_notosansthai_vfs_v1';
+
+  try { new jsPDF().setFont(FONT_NAME); return; } catch (_) {}
+
+  const cached = localStorage.getItem(VFS_KEY);
+  if (cached) {
+    jsPDF.API.addFileToVFS(VFS_FILE, cached);
+    jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
+    try { new jsPDF().setFont(FONT_NAME); return; } catch(_) {}
+  }
+
+  const FONT_URL = 'https://raw.githubusercontent.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf';
+  const res = await fetch(FONT_URL, { mode: 'cors' });
+  if (!res.ok) throw new Error('โหลดฟอนต์ไทยไม่สำเร็จ: HTTP ' + res.status);
+
+  const blob = await res.blob();
+  const base64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result).split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+
+  jsPDF.API.addFileToVFS(VFS_FILE, base64);
+  jsPDF.API.addFont(VFS_FILE, FONT_NAME, 'normal');
+  localStorage.setItem(VFS_KEY, base64);
+
+  try { new jsPDF().setFont(FONT_NAME); }
+  catch (e) { throw new Error('ลงทะเบียนฟอนต์ไทยไม่สำเร็จ: ' + e.message); }
+}
+
+/* --- PDF Fallback: แคปเจอร์หน้าประวัติ (แก้ปัญหา PDF ขาว/ตัวเพี้ยน) --- */
+async function exportHistoryPDF_Fallback() {
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) { alert('ไม่พบ jsPDF'); return; }
+    if (!window.html2canvas) { alert('ไม่พบ html2canvas'); return; }
+    if (!auth || !auth.currentUser) { alert('กรุณาเข้าสู่ระบบก่อน'); return; }
+
+    // อัปเดตข้อมูลล่าสุดก่อนแคปเจอร์
+    await loadHistory();
+
+    const src = document.getElementById('historySection');
+    if (!src) { alert('ไม่พบส่วนประวัติ'); return; }
+
+    // host สำหรับโคลน (ซ่อนนอกจอ)
+    let host = document.getElementById('print-clone-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'print-clone-host';
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+
+    // โคลนเนื้อหาและทำให้มองเห็นได้เพื่อให้ html2canvas เรนเดอร์
+    const clone = src.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.display = 'block';
+    clone.style.width = '1000px';
+    clone.style.background = '#ffffff';
+    host.appendChild(clone);
+
+    // เผื่อเวลาให้ layout/ฟอนต์โหลด
+    await new Promise(r => setTimeout(r, 300));
+
+    // DOM -> Canvas
+    const scale = 2; // คมชัด
+    const canvas = await html2canvas(clone, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      windowWidth: clone.scrollWidth,
+      windowHeight: clone.scrollHeight
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    // ใส่ลง PDF A4 (ตัดหลายหน้าอัตโนมัติ)
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210
+    const pageH = pdf.internal.pageSize.getHeight();  // 297
+
+    const imgPxW = canvas.width;
+    const imgPxH = canvas.height;
+    const ratio  = imgPxW / imgPxH;
+    const renderW = pageW;
+    const renderH = renderW / ratio;
+
+    if (renderH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, renderW, renderH, undefined, 'FAST');
+    } else {
+      const pxPerMm = imgPxW / renderW;
+      const pagePxH = pageH * pxPerMm;
+      let sY = 0, page = 0;
+
+      while (sY < imgPxH) {
+        const sliceH = Math.min(pagePxH, imgPxH - sY);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width  = imgPxW;
+        pageCanvas.height = sliceH;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, sY, imgPxW, sliceH, 0, 0, imgPxW, sliceH);
+
+        const pageImg = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (page > 0) pdf.addPage();
+        pdf.addImage(pageImg, 'JPEG', 0, 0, renderW, (sliceH / pxPerMm), undefined, 'FAST');
+
+        sY += sliceH;
+        page += 1;
+      }
+    }
+
+    pdf.save('taxonline_summary.pdf');
+
+    // cleanup
+    host.innerHTML = '';
+  } catch (e) {
+    console.error(e);
+    alert(e.message || e);
+  }
+}
+
+async function openDriveFolder() {
+  try {
+    const { webViewLink } = await getOrCreateDriveFolder();
+    if (!webViewLink) { alert('ยังไม่มีโฟลเดอร์'); return; }
+    window.open(webViewLink, '_blank');
+  } catch(e) { alert(e.message || e); }
+}
+
+document.getElementById('downloadCsvBtn')?.addEventListener('click', exportHistoryCSV);
+/* เปลี่ยนให้กดดาวน์โหลด PDF ใช้ fallback ใหม่นี้ */
+document.getElementById('downloadPdfBtn')?.addEventListener('click', exportHistoryPDF_Fallback);
+document.getElementById('openDriveFolderBtn')?.addEventListener('click', openDriveFolder);
+/* ❌ ลบการ bind ปุ่มคู่มือ (ใช้ลิงก์ <a> เปิด Drive แล้ว) */
+/* document.getElementById('downloadGuidePdfBtn')?.addEventListener('click', exportGuidePDF); */
+
+/* ========= BOOT ========= */
+(async function boot(){
+  const diag = [];
+  try{
+    await waitForFirebase(10000);
+    diag.push('[OK] Firebase SDK loaded');
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBl-j4STHVQ80VNM6mPl80-55BHk4nEyZk",
+      authDomain: "tax-online-6afdd.firebaseapp.com",
+      projectId: "tax-online-6afdd",
+      appId: "1:959276043439:web:f358ce055687efea5d185a"
+      // ถ้ามี Firebase Storage ให้เพิ่ม: storageBucket: "your-bucket.appspot.com"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    diag.push('[OK] Firebase initialized, Firestore & Auth ready]');
+
+    // Auth flows
+    const loginForm = document.getElementById('loginForm');
+    const authMessage = document.getElementById('authMessage');
+    loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(()=>showOnly('calculator'))
+        .catch(err=>authMessage.textContent=err.message);
+    });
+
+    const signupForm = document.getElementById('signupForm');
+    signupForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const firstName = document.getElementById('signupFirstName').value.trim();
+      const lastName = document.getElementById('signupLastName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      if (!firstName || !lastName || !email || !password) { authMessage.textContent='กรุณากรอกข้อมูลให้ครบ'; return; }
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(cred=>{
+          const user=cred.user;
+          return user.updateProfile({ displayName: `${firstName} ${lastName}` })
+            .then(()=> db.collection('users').doc(user.uid).set({
+              uid:user.uid, firstName, lastName, email, phone:'', address:'', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, {merge:true}));
+        })
+        .then(()=>{ showOnly('profile'); loadProfile(); })
+        .catch(err=> authMessage.textContent=err.message );
+    });
+
+    document.getElementById('googleSignInBtn').addEventListener('click', ()=>{
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(async res=>{
+          const user = res.user;
+          const docRef = db.collection('users').doc(user.uid);
+          const snap = await docRef.get();
+          if (!snap.exists) {
+            const [firstName, ...rest] = (user.displayName||'').split(' ');
+            await docRef.set({
+              uid:user.uid,
+              firstName:firstName||'',
+              lastName:(rest||[]).join(' ')||'',
+              email:user.email||'',
+              phone:'', address:'',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, {merge:true});
+          }
+          showOnly('calculator');
+        })
+        .catch(err=> authMessage.textContent=err.message );
+    });
+
+    logoutBtn.addEventListener('click', ()=> auth.signOut());
+
+    auth.onAuthStateChanged((user)=>{
+      if (user) {
+        userGreeting.classList.remove('hidden');
+        userGreeting.textContent = `สวัสดี, ${user.displayName || user.email}`;
+        loginNav.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+      } else {
+        userGreeting.classList.add('hidden');
+        loginNav.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        showOnly('welcome');
+      }
+    });
+
+    // Diagnostics
+    const checks = [
+      ['window.firebase', !!window.firebase],
+      ['firebase.apps.length', firebase.apps && firebase.apps.length>0],
+      ['firebase.auth', !!firebase.auth],
+      ['firebase.firestore', !!firebase.firestore],
+      ['Chart', !!window.Chart],
+      ['jsPDF', !!(window.jspdf && window.jspdf.jsPDF)],
+      ['GIS (google.accounts)', !!(window.google && google.accounts)],
+      ['html2canvas', !!window.html2canvas]
+    ];
+    checks.forEach(([k,v])=> diag.push(`${v?'[OK]':'[X]'} ${k}`));
+    showDiag(diag);
+  }catch(err){
+    console.error(err);
+    showDiag(['[X] boot failed', String(err)]);
+    alert('เกิดข้อผิดพลาดในการเริ่มต้นระบบ: '+ err.message);
+  }
+})();
+</script>
+
+</body>
+</html>
